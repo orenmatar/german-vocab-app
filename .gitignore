@@ -1,0 +1,19 @@
+# Secrets — never commit these
+.env
+
+# Personal data — word list, grammar, settings are local-only
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code local settings
+.claude/
+
+# Editor
+.idea/
+.vscode/
+*.swp

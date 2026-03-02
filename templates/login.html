@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Vocab — Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <nav class="nav">
+            <div class="nav-inner">
+                <span class="nav-title">German Vocab</span>
+            </div>
+        </nav>
+
+        <main class="content">
+            <div style="display:flex;justify-content:center;padding-top:48px;">
+                <div class="practice-start-card">
+                    <h2>Welcome</h2>
+                    <p>Enter the password to continue.</p>
+                    {% if error %}
+                    <p style="color:var(--wrong);margin-bottom:12px;">{{ error }}</p>
+                    {% endif %}
+                    <form method="POST" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+                        <input type="password" name="password" placeholder="Password..."
+                               autocomplete="current-password"
+                               style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);
+                                      font-family:var(--font-sans);font-size:0.95rem;background:var(--bg-card);
+                                      color:var(--text);width:100%;max-width:260px;text-align:center;">
+                        <button type="submit" class="btn btn-primary btn-large">Enter</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
