@@ -851,6 +851,130 @@ body {
     border: 1px solid var(--border);
 }
 
+/* --- Grammar enriched cards --- */
+
+.grammar-item {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.grammar-rule-name {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 1.05rem;
+    flex: 1;
+}
+
+.grammar-explanation {
+    font-size: 0.88rem;
+    color: var(--text-light);
+    line-height: 1.55;
+    padding-left: 2px;
+}
+
+.grammar-examples-list {
+    margin: 0;
+    padding: 0 0 0 4px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.grammar-example {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+}
+
+.grammar-example-de {
+    font-family: var(--font-serif);
+    color: var(--text);
+}
+
+.grammar-example-en {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.grammar-enrich-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+/* --- Sentence writing grammar challenge --- */
+
+.sw-grammar-card {
+    background: #fef9ef;
+    border: 1px solid #e8dcc8;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.sw-grammar-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #b07d30;
+    margin-bottom: 6px;
+}
+
+.sw-grammar-rule-name {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.sw-grammar-explanation {
+    font-size: 0.88rem;
+    color: var(--text-light);
+    line-height: 1.55;
+    margin-bottom: 10px;
+}
+
+.sw-grammar-examples {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.sw-grammar-examples li {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 0.85rem;
+}
+
+.sw-ex-de {
+    font-family: var(--font-serif);
+    color: var(--text);
+}
+
+.sw-ex-en {
+    color: var(--text-light);
+    font-style: italic;
+}
+
 /* --- Grammar toggle --- */
 
 .grammar-toggle {

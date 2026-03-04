@@ -55,9 +55,14 @@
             <div id="grammar-view" class="view">
                 <div class="add-word-form">
                     <div class="form-row">
-                        <input type="text" id="new-grammar" placeholder="Grammar hint (e.g. 'use Konjunktiv II', 'use a relative clause')..." autocomplete="off">
+                        <input type="text" id="new-grammar" placeholder="Describe a grammar rule in your own words..." autocomplete="off">
                         <button id="add-grammar-btn" class="btn btn-primary">Add</button>
                     </div>
+                </div>
+
+                <div id="grammar-enrich-banner" class="grammar-enrich-banner" style="display:none;">
+                    <div class="spinner-small"></div>
+                    <span>Updating existing grammar notes...</span>
                 </div>
 
                 <div class="word-list-header">
@@ -196,6 +201,12 @@
                             <div class="sw-prompt">
                                 <div class="sw-word" id="sw-word"></div>
                                 <div class="sw-definition" id="sw-definition"></div>
+                            </div>
+                            <div id="sw-grammar-card" class="sw-grammar-card" style="display:none;">
+                                <div class="sw-grammar-label">Grammar Challenge</div>
+                                <div class="sw-grammar-rule-name" id="sw-grammar-rule-name"></div>
+                                <div class="sw-grammar-explanation" id="sw-grammar-explanation"></div>
+                                <ul class="sw-grammar-examples" id="sw-grammar-examples"></ul>
                             </div>
                             <div class="fill-input-area sw-input-area">
                                 <textarea id="sw-input" placeholder="Write a German sentence using this word..." rows="3"></textarea>

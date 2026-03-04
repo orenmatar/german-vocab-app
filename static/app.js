@@ -42,6 +42,7 @@
   const addGrammarBtn = document.getElementById("add-grammar-btn");
   const grammarCountEl = document.getElementById("grammar-count");
   const grammarListEl = document.getElementById("grammar-list");
+  const grammarEnrichBanner = document.getElementById("grammar-enrich-banner");
 
   // Practice states
   const practiceIdle = document.getElementById("practice-idle");
@@ -137,6 +138,10 @@
   const modeSW = document.getElementById("mode-sentence-write");
   const swWord = document.getElementById("sw-word");
   const swDefinition = document.getElementById("sw-definition");
+  const swGrammarCard = document.getElementById("sw-grammar-card");
+  const swGrammarRuleName = document.getElementById("sw-grammar-rule-name");
+  const swGrammarExplanation = document.getElementById("sw-grammar-explanation");
+  const swGrammarExamples = document.getElementById("sw-grammar-examples");
   const swInput = document.getElementById("sw-input");
   const swSubmitBtn = document.getElementById("sw-submit-btn");
   const swLoading = document.getElementById("sw-loading");
@@ -359,6 +364,20 @@
   async function loadGrammar() {
     try {
       grammarPoints = await api("GET", "/api/grammar");
+
+      // Auto-enrich any legacy points that haven't been processed yet
+      const needsEnrich = grammarPoints.some((gp) => !gp.rule_name);
+      if (needsEnrich) {
+        grammarEnrichBanner.style.display = "flex";
+        try {
+          await api("POST", "/api/grammar/enrich-all");
+          grammarPoints = await api("GET", "/api/grammar");
+        } catch (e) {
+          console.error("Failed to enrich grammar:", e);
+        }
+        grammarEnrichBanner.style.display = "none";
+      }
+
       renderGrammar();
     } catch (e) {
       console.error("Failed to load grammar:", e);
@@ -366,11 +385,11 @@
   }
 
   function renderGrammar() {
-    grammarCountEl.textContent = `${grammarPoints.length} hint${grammarPoints.length !== 1 ? "s" : ""}`;
+    grammarCountEl.textContent = `${grammarPoints.length} rule${grammarPoints.length !== 1 ? "s" : ""}`;
 
     if (grammarPoints.length === 0) {
       grammarListEl.innerHTML =
-        '<div style="text-align:center;color:var(--text-light);padding:40px;">No grammar hints yet. Add hints like "use Konjunktiv II" or "use a relative clause" to weave grammar practice into your sentences.</div>';
+        '<div style="text-align:center;color:var(--text-light);padding:40px;">No grammar rules yet. Describe a rule in your own words — e.g. "konjuktiv 2" or "infinitiv with zu after verbs" — and the AI will expand it.</div>';
       return;
     }
 
@@ -378,17 +397,24 @@
       .map((gp) => {
         const enabled = gp.enabled !== false;
         const dimClass = enabled ? "" : " grammar-disabled";
+        const title = gp.rule_name || gp.hint;
+        const examplesHtml = (gp.examples || [])
+          .map((ex) => `<li class="grammar-example"><span class="grammar-example-de">${escHtml(ex.german)}</span><span class="grammar-example-en">${escHtml(ex.english)}</span></li>`)
+          .join("");
+
         return `
-        <div class="word-item fade-in${dimClass}">
+        <div class="word-item grammar-item fade-in${dimClass}">
           <div class="word-item-main">
             <label class="grammar-toggle">
               <input type="checkbox" ${enabled ? "checked" : ""} onchange="toggleGrammar('${escAttr(gp.id)}', this.checked)">
             </label>
-            <span class="word-german">${escHtml(gp.hint)}</span>
+            <span class="grammar-rule-name">${escHtml(title)}</span>
             <span class="word-actions">
               <button class="btn-delete" onclick="deleteGrammar('${escAttr(gp.id)}')" title="Delete">&#x2715;</button>
             </span>
           </div>
+          ${gp.explanation ? `<div class="grammar-explanation">${escHtml(gp.explanation)}</div>` : ""}
+          ${examplesHtml ? `<ul class="grammar-examples-list">${examplesHtml}</ul>` : ""}
         </div>`;
       })
       .join("");
@@ -405,6 +431,7 @@
 
     try {
       addGrammarBtn.disabled = true;
+      addGrammarBtn.classList.add("btn-loading");
       const gp = await api("POST", "/api/grammar", { hint });
       grammarPoints.push(gp);
       renderGrammar();
@@ -414,6 +441,7 @@
       alert(e.message);
     } finally {
       addGrammarBtn.disabled = false;
+      addGrammarBtn.classList.remove("btn-loading");
     }
   }
 
@@ -855,6 +883,20 @@
     swWord.textContent = item.german;
     swDefinition.textContent = item.german_definition || "";
     swDefinition.style.display = item.german_definition ? "block" : "none";
+
+    // Grammar challenge card
+    const gr = item.sw_grammar;
+    if (gr) {
+      swGrammarRuleName.textContent = gr.rule_name;
+      swGrammarExplanation.textContent = gr.explanation;
+      swGrammarExamples.innerHTML = (gr.examples || [])
+        .map((ex) => `<li><span class="sw-ex-de">${escHtml(ex.german)}</span><span class="sw-ex-en">${escHtml(ex.english)}</span></li>`)
+        .join("");
+      swGrammarCard.style.display = "block";
+    } else {
+      swGrammarCard.style.display = "none";
+    }
+
     swInput.value = "";
     swInput.disabled = false;
     swSubmitBtn.disabled = false;
@@ -887,11 +929,16 @@
     swLoading.style.display = "flex";
 
     try {
-      const result = await api("POST", "/api/practice/judge", {
+      const judgePayload = {
         word: item.german,
         sentence: sentence,
         german_definition: item.german_definition || "",
-      });
+      };
+      if (item.sw_grammar) {
+        judgePayload.grammar_rule = item.sw_grammar.hint;
+        judgePayload.rule_name = item.sw_grammar.rule_name;
+      }
+      const result = await api("POST", "/api/practice/judge", judgePayload);
 
       swLoading.style.display = "none";
       swFeedback.style.display = "block";

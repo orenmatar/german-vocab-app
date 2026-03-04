@@ -276,7 +276,21 @@ def practice_batch():
         german = word["german"]
 
         if mode == "sentence_writing":
-            # Sentence writing words don't need LLM-generated sentences
+            # Optionally attach a grammar challenge (enriched points only)
+            sw_grammar = None
+            enriched_gps = [
+                gp for gp in grammar_data["grammar_points"]
+                if gp.get("enabled", True) and gp.get("rule_name")
+            ]
+            if enriched_gps and random.random() < 0.6:
+                gp = random.choice(enriched_gps)
+                sw_grammar = {
+                    "rule_name": gp["rule_name"],
+                    "hint": gp["hint"],
+                    "explanation": gp["explanation"],
+                    "examples": gp.get("examples", []),
+                }
+
             item = {
                 "german": german,
                 "mode": mode,
@@ -287,6 +301,7 @@ def practice_batch():
                 "german_definition": word.get("german_definition", ""),
                 "word_in_sentence": german,
                 "grammar_note": "",
+                "sw_grammar": sw_grammar,
             }
             batch.append(item)
             continue
@@ -416,11 +431,19 @@ def practice_judge():
     prompt_path = PROMPTS_DIR / "judge_sentence.txt"
     system_prompt = prompt_path.read_text(encoding="utf-8")
 
-    user_prompt = json.dumps({
+    grammar_rule = body.get("grammar_rule", "").strip()
+    rule_name = body.get("rule_name", "").strip()
+
+    judge_input = {
         "word": word,
         "german_definition": german_definition,
         "sentence": sentence,
-    }, ensure_ascii=False)
+    }
+    if grammar_rule:
+        judge_input["grammar_rule"] = grammar_rule
+        judge_input["rule_name"] = rule_name
+
+    user_prompt = json.dumps(judge_input, ensure_ascii=False)
 
     try:
         response_text = call_llm(system_prompt, user_prompt)
@@ -441,10 +464,21 @@ def get_grammar():
 @app.route("/api/grammar", methods=["POST"])
 def add_grammar():
     body = request.get_json()
-    hint = body.get("hint", "").strip()
+    raw_input = body.get("hint", "").strip()
 
-    if not hint:
+    if not raw_input:
         return jsonify({"error": "Hint is required."}), 400
+
+    # Enrich via LLM
+    system_prompt = (PROMPTS_DIR / "validate_grammar.txt").read_text(encoding="utf-8")
+    try:
+        response_text = call_llm(system_prompt, raw_input)
+        enriched = parse_json_response(response_text)
+    except Exception as e:
+        return jsonify({"error": f"Failed to process grammar hint: {str(e)}"}), 500
+
+    if not enriched.get("ok"):
+        return jsonify({"error": enriched.get("question", "Could not understand this grammar rule. Please rephrase.")}), 422
 
     # Generate a simple incremental ID
     existing_ids = [gp["id"] for gp in grammar_data["grammar_points"]]
@@ -454,7 +488,10 @@ def add_grammar():
 
     gp = {
         "id": f"gp_{next_num}",
-        "hint": hint,
+        "hint": enriched["hint"],
+        "rule_name": enriched["rule_name"],
+        "explanation": enriched["explanation"],
+        "examples": enriched.get("examples", []),
         "added_at": datetime.now().isoformat(),
         "enabled": True,
     }
@@ -462,6 +499,32 @@ def add_grammar():
     grammar_data["grammar_points"].append(gp)
     save_grammar(grammar_data)
     return jsonify(gp), 201
+
+
+@app.route("/api/grammar/enrich-all", methods=["POST"])
+def enrich_all_grammar():
+    """Enrich any existing grammar points that haven't been processed yet."""
+    system_prompt = (PROMPTS_DIR / "validate_grammar.txt").read_text(encoding="utf-8")
+    updated = 0
+
+    for gp in grammar_data["grammar_points"]:
+        if gp.get("rule_name"):
+            continue  # already enriched
+        try:
+            response_text = call_llm(system_prompt, gp["hint"])
+            enriched = parse_json_response(response_text)
+            if enriched.get("ok"):
+                gp["hint"] = enriched["hint"]
+                gp["rule_name"] = enriched["rule_name"]
+                gp["explanation"] = enriched["explanation"]
+                gp["examples"] = enriched.get("examples", [])
+                updated += 1
+        except Exception:
+            continue  # skip on failure, don't block the rest
+
+    if updated:
+        save_grammar(grammar_data)
+    return jsonify({"updated": updated})
 
 
 @app.route("/api/grammar/<gp_id>", methods=["PATCH"])
