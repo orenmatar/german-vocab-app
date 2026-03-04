@@ -98,6 +98,11 @@ body {
     max-width: 720px;
     margin: 0 auto;
     padding: 32px 24px;
+    transition: max-width 0.2s ease;
+}
+
+.content.content--wide {
+    max-width: 1100px;
 }
 
 .view {
@@ -975,14 +980,6 @@ body {
     font-style: italic;
 }
 
-/* Grammar view — wider layout to fit two columns */
-
-#grammar-view {
-    max-width: 1100px;
-    margin: 0 auto;
-    width: 100%;
-}
-
 /* Grammar list — two column grid */
 
 #grammar-list {
@@ -996,6 +993,54 @@ body {
     #grammar-list {
         grid-template-columns: 1fr;
     }
+}
+
+/* Grammar inline edit */
+
+.grammar-edit-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.grammar-edit-area textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    background: var(--bg-card);
+    color: var(--text);
+    resize: vertical;
+    min-height: 80px;
+}
+
+.grammar-edit-area textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.grammar-edit-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-edit:hover {
+    background: var(--accent-light);
+    color: var(--accent);
 }
 
 /* --- Grammar toggle --- */

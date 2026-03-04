@@ -158,6 +158,8 @@
 
   // --- Navigation ---
 
+  const contentEl = document.querySelector(".content");
+
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       tabs.forEach((t) => t.classList.remove("active"));
@@ -168,6 +170,8 @@
       grammarView.classList.toggle("active", view === "grammar");
       practiceView.classList.toggle("active", view === "practice");
       settingsView.classList.toggle("active", view === "settings");
+
+      contentEl.classList.toggle("content--wide", view === "grammar");
 
       if (view === "words") loadWords();
       if (view === "grammar") loadGrammar();
@@ -403,18 +407,26 @@
           .join("");
 
         return `
-        <div class="word-item grammar-item fade-in${dimClass}">
+        <div class="word-item grammar-item fade-in${dimClass}" id="gpcard-${escAttr(gp.id)}">
           <div class="word-item-main">
             <label class="grammar-toggle">
               <input type="checkbox" ${enabled ? "checked" : ""} onchange="toggleGrammar('${escAttr(gp.id)}', this.checked)">
             </label>
             <span class="grammar-rule-name">${escHtml(title)}</span>
             <span class="word-actions">
+              <button class="btn-edit" onclick="editGrammar('${escAttr(gp.id)}')" title="Edit">&#x270E;</button>
               <button class="btn-delete" onclick="deleteGrammar('${escAttr(gp.id)}')" title="Delete">&#x2715;</button>
             </span>
           </div>
           ${gp.explanation ? `<div class="grammar-explanation">${escHtml(gp.explanation)}</div>` : ""}
           ${examplesHtml ? `<ul class="grammar-examples-list">${examplesHtml}</ul>` : ""}
+          <div class="grammar-edit-area" id="gpedit-${escAttr(gp.id)}" style="display:none;">
+            <textarea placeholder="Describe your changes...">${escHtml(gp.rule_name ? gp.rule_name + "\n\n" + gp.explanation : gp.hint)}</textarea>
+            <div class="grammar-edit-buttons">
+              <button class="btn btn-primary btn-small" onclick="saveGrammarEdit('${escAttr(gp.id)}')">Save</button>
+              <button class="btn btn-ghost btn-small" onclick="cancelGrammarEdit('${escAttr(gp.id)}')">Cancel</button>
+            </div>
+          </div>
         </div>`;
       })
       .join("");
@@ -466,6 +478,35 @@
     } catch (e) {
       alert(e.message);
       renderGrammar(); // revert checkbox visually
+    }
+  };
+
+  window.editGrammar = function (id) {
+    document.getElementById(`gpedit-${id}`).style.display = "block";
+  };
+
+  window.cancelGrammarEdit = function (id) {
+    document.getElementById(`gpedit-${id}`).style.display = "none";
+  };
+
+  window.saveGrammarEdit = async function (id) {
+    const area = document.getElementById(`gpedit-${id}`);
+    const raw_input = area.querySelector("textarea").value.trim();
+    if (!raw_input) return;
+
+    const saveBtn = area.querySelector(".btn-primary");
+    saveBtn.disabled = true;
+    saveBtn.classList.add("btn-loading");
+
+    try {
+      const updated = await api("PATCH", `/api/grammar/${encodeURIComponent(id)}`, { raw_input });
+      const idx = grammarPoints.findIndex((gp) => gp.id === id);
+      if (idx !== -1) grammarPoints[idx] = updated;
+      renderGrammar();
+    } catch (e) {
+      alert(e.message);
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("btn-loading");
     }
   };
 

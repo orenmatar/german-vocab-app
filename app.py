@@ -542,6 +542,20 @@ def toggle_grammar(gp_id):
         if gp["id"] == gp_id:
             if "enabled" in body:
                 gp["enabled"] = bool(body["enabled"])
+            if "raw_input" in body:
+                raw = body["raw_input"].strip()
+                system_prompt = (PROMPTS_DIR / "validate_grammar.txt").read_text(encoding="utf-8")
+                try:
+                    response_text = call_llm(system_prompt, raw)
+                    enriched = parse_json_response(response_text)
+                except Exception as e:
+                    return jsonify({"error": f"Failed to process: {str(e)}"}), 500
+                if not enriched.get("ok"):
+                    return jsonify({"error": enriched.get("question", "Could not understand this grammar rule.")}), 422
+                gp["hint"] = enriched["hint"]
+                gp["rule_name"] = enriched["rule_name"]
+                gp["explanation"] = enriched["explanation"]
+                gp["examples"] = enriched.get("examples", [])
             save_grammar(grammar_data)
             return jsonify(gp)
     return jsonify({"error": "Grammar point not found."}), 404
