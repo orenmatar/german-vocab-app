@@ -28,6 +28,8 @@ Return ONLY a valid JSON object with these exact fields:
 - "correction_note": string — what was fixed (empty string if nothing was corrected)
 - "article": string — "der", "die", or "das" if the word is a noun. Empty string "" for verbs, adjectives, phrases, etc.
 - "plural": string — the plural form of the noun (e.g. "Häuser" for "Haus"). Empty string "" for non-nouns or uncountable nouns.
+- "preteritum": string — for verbs only: the 3rd person singular Präteritum form (e.g. "lief" for "laufen", "hatte" for "haben", "ging" for "gehen", "fing an" for "anfangen"). Empty string "" for non-verbs.
+- "partizip2": string — for verbs only: the Partizip II form (e.g. "gelaufen", "gehabt", "gegangen", "angefangen"). Empty string "" for non-verbs.
 
 Example:
 Input: {"word": "haus", "context_note": ""}
@@ -39,7 +41,9 @@ Output:
   "english_translation": "house",
   "correction_note": "Capitalized — German nouns are always capitalized.",
   "article": "das",
-  "plural": "Häuser"
+  "plural": "Häuser",
+  "preteritum": "",
+  "partizip2": ""
 }
 
 Example:
@@ -52,5 +56,7 @@ Output:
   "english_translation": "definitely, in any case",
   "correction_note": "",
   "article": "",
-  "plural": ""
+  "plural": "",
+  "preteritum": "",
+  "partizip2": ""
 }

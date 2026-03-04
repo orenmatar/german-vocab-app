@@ -161,6 +161,8 @@ def add_word():
         "english_translation": body.get("english_translation", "").strip(),
         "article": body.get("article", "").strip(),
         "plural": body.get("plural", "").strip(),
+        "preteritum": body.get("preteritum", "").strip(),
+        "partizip2": body.get("partizip2", "").strip(),
         "added_at": datetime.now().isoformat(),
         "box": 1,
         "times_seen": 0,
@@ -299,6 +301,11 @@ def practice_batch():
                 "blank_sentence": "",
                 "blank_answer": german,
                 "german_definition": word.get("german_definition", ""),
+                "english_translation": word.get("english_translation", ""),
+                "article": word.get("article", ""),
+                "plural": word.get("plural", ""),
+                "preteritum": word.get("preteritum", ""),
+                "partizip2": word.get("partizip2", ""),
                 "word_in_sentence": german,
                 "grammar_note": "",
                 "sw_grammar": sw_grammar,
@@ -331,6 +338,11 @@ def practice_batch():
             "blank_sentence": s.get("blank_sentence", ""),
             "blank_answer": blank_answer,
             "german_definition": word.get("german_definition", ""),
+            "english_translation": word.get("english_translation", ""),
+            "article": word.get("article", ""),
+            "plural": word.get("plural", ""),
+            "preteritum": word.get("preteritum", ""),
+            "partizip2": word.get("partizip2", ""),
             "word_in_sentence": word_in_sentence,
             "grammar_note": s.get("grammar_note", ""),
         }
@@ -414,6 +426,8 @@ def practice_passage():
         wu["plural"] = meta.get("plural", "")
         wu["german_definition"] = meta.get("german_definition", "")
         wu["english_translation"] = meta.get("english_translation", "")
+        wu["preteritum"] = meta.get("preteritum", "")
+        wu["partizip2"] = meta.get("partizip2", "")
 
     return jsonify(result)
 

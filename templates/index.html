@@ -198,10 +198,7 @@
                         <!-- Sentence writing mode -->
                         <div id="mode-sentence-write" style="display:none;">
                             <div class="practice-label">Write a Sentence</div>
-                            <div class="sw-prompt">
-                                <div class="sw-word" id="sw-word"></div>
-                                <div class="sw-definition" id="sw-definition"></div>
-                            </div>
+                            <div class="sw-prompt" id="sw-word-card-slot"></div>
                             <div id="sw-grammar-card" class="sw-grammar-card" style="display:none;">
                                 <div class="sw-grammar-label">Grammar Challenge</div>
                                 <div class="sw-grammar-rule-name" id="sw-grammar-rule-name"></div>
@@ -257,11 +254,7 @@
                 <!-- Word popup -->
                 <div id="word-popup" style="display:none;">
                     <button id="word-popup-close" class="word-popup-close">&times;</button>
-                    <div class="word-popup-word" id="word-popup-word"></div>
-                    <div class="word-popup-meta" id="word-popup-meta"></div>
-                    <div class="word-popup-definition" id="word-popup-definition"></div>
-                    <button id="word-popup-show-translation" class="word-popup-show-trans" style="display:none;">Show translation</button>
-                    <div class="word-popup-translation" id="word-popup-translation" style="display:none;"></div>
+                    <div id="word-popup-content"></div>
                 </div>
 
                 <!-- Summary state -->

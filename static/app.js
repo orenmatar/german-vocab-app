@@ -68,11 +68,7 @@
   // Word popup
   const wordPopup = document.getElementById("word-popup");
   const wordPopupClose = document.getElementById("word-popup-close");
-  const wordPopupWord = document.getElementById("word-popup-word");
-  const wordPopupMeta = document.getElementById("word-popup-meta");
-  const wordPopupDefinition = document.getElementById("word-popup-definition");
-  const wordPopupShowTranslation = document.getElementById("word-popup-show-translation");
-  const wordPopupTranslation = document.getElementById("word-popup-translation");
+  const wordPopupContent = document.getElementById("word-popup-content");
 
   // Audio opt-in
   const audioOptIn = document.getElementById("audio-opt-in");
@@ -93,8 +89,8 @@
   const compSentence = document.getElementById("comp-sentence");
   const showTranslationBtn = document.getElementById("show-translation-btn");
   const compTranslation = document.getElementById("comp-translation");
-  const compTargetWord = document.getElementById("comp-target-word");
-  const compDefinition = document.getElementById("comp-definition");
+  const compWordCard = document.getElementById("comp-target-word");   // repurposed as word card slot
+  const compDefinition = document.getElementById("comp-definition");  // kept hidden
   const compGrammarNote = document.getElementById("comp-grammar-note");
   const compButtons = document.getElementById("comp-buttons");
 
@@ -114,8 +110,8 @@
   const mcFeedback = document.getElementById("mc-feedback");
   const mcFeedbackText = document.getElementById("mc-feedback-text");
   const mcTranslation = document.getElementById("mc-translation");
-  const mcTargetWord = document.getElementById("mc-target-word");
-  const mcDefinition = document.getElementById("mc-definition");
+  const mcWordCard = document.getElementById("mc-target-word");  // repurposed
+  const mcDefinition = document.getElementById("mc-definition"); // kept hidden
   const mcGrammarNote = document.getElementById("mc-grammar-note");
   const mcNextBtn = document.getElementById("mc-next-btn");
 
@@ -127,8 +123,8 @@
   const fillFeedback = document.getElementById("fill-feedback");
   const fillFeedbackText = document.getElementById("fill-feedback-text");
   const fillTranslation = document.getElementById("fill-translation");
-  const fillTargetWord = document.getElementById("fill-target-word");
-  const fillDefinition = document.getElementById("fill-definition");
+  const fillWordCard = document.getElementById("fill-target-word");  // repurposed
+  const fillDefinition = document.getElementById("fill-definition"); // kept hidden
   const fillGrammarNote = document.getElementById("fill-grammar-note");
   const fillOverride = document.getElementById("fill-override");
   const fillOverrideBtn = document.getElementById("fill-override-btn");
@@ -136,8 +132,7 @@
 
   // Sentence writing mode
   const modeSW = document.getElementById("mode-sentence-write");
-  const swWord = document.getElementById("sw-word");
-  const swDefinition = document.getElementById("sw-definition");
+  const swWordCardSlot = document.getElementById("sw-word-card-slot");
   const swGrammarCard = document.getElementById("sw-grammar-card");
   const swGrammarRuleName = document.getElementById("sw-grammar-rule-name");
   const swGrammarExplanation = document.getElementById("sw-grammar-explanation");
@@ -196,6 +191,55 @@
     }
     return data;
   }
+
+  // --- Word card component ---
+
+  function buildWordCard(info) {
+    const {
+      german = "",
+      article = "",
+      plural = "",
+      preteritum = "",
+      partizip2 = "",
+      german_definition = "",
+      english_translation = "",
+      form_in_sentence = "",
+    } = info;
+
+    // Header: article + word + inflected form (if different)
+    const articleHtml = article ? `<span class="wc-article">${escHtml(article)}</span> ` : "";
+    const formHtml = (form_in_sentence && form_in_sentence !== german)
+      ? ` <span class="wc-form-in-sentence">→ <em>${escHtml(form_in_sentence)}</em></span>`
+      : "";
+    const headerHtml = `<div class="wc-header">${articleHtml}<span class="wc-word">${escHtml(german)}</span>${formHtml}</div>`;
+
+    // Supplements: Pl. X for nouns, Prät. X · Ptz. Y for verbs
+    const sups = [];
+    if (plural) sups.push(`Pl. ${escHtml(plural)}`);
+    if (preteritum) sups.push(`Prät. ${escHtml(preteritum)}`);
+    if (partizip2) sups.push(escHtml(partizip2));
+    const supsHtml = sups.length
+      ? `<div class="wc-supplements">${sups.join(" &nbsp;·&nbsp; ")}</div>`
+      : "";
+
+    const defHtml = german_definition
+      ? `<div class="wc-definition">${escHtml(german_definition)}</div>`
+      : "";
+
+    const transHtml = english_translation
+      ? `<button class="wc-trans-btn">Show translation</button><div class="wc-translation" style="display:none">${escHtml(english_translation)}</div>`
+      : "";
+
+    return `<div class="word-card">${headerHtml}${supsHtml}${defHtml}${transHtml}</div>`;
+  }
+
+  // Global delegated click for "Show translation" inside any word card
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".wc-trans-btn");
+    if (!btn) return;
+    btn.style.display = "none";
+    btn.nextElementSibling.style.display = "block";
+  });
 
   // --- Umlaut normalization ---
 
@@ -333,6 +377,8 @@
         english_translation: validation.english_translation || "",
         article: validation.article || "",
         plural: validation.plural || "",
+        preteritum: validation.preteritum || "",
+        partizip2: validation.partizip2 || "",
       });
 
       words.push(newWord);
@@ -606,14 +652,20 @@
     compTranslation.style.display = "none";
     compTranslation.textContent = item.translation;
 
-    compTargetWord.style.display = "none";
-    const compInSentence = item.word_in_sentence || item.german;
-    compTargetWord.innerHTML = `<strong>Word:</strong> ${escHtml(item.german)}${compInSentence !== item.german ? ` → <em>${escHtml(compInSentence)}</em>` : ""}`;
+    compWordCard.style.display = "none";
+    compWordCard.className = "";  // remove target-word-reveal styling
+    compWordCard.innerHTML = buildWordCard({
+      german: item.german,
+      article: item.article,
+      plural: item.plural,
+      preteritum: item.preteritum,
+      partizip2: item.partizip2,
+      german_definition: item.german_definition,
+      english_translation: item.english_translation,
+      form_in_sentence: item.word_in_sentence,
+    });
 
-    compDefinition.style.display = "none";
-    if (item.german_definition) {
-      compDefinition.innerHTML = `<strong>Deutsch:</strong> ${escHtml(item.german_definition)}`;
-    }
+    compDefinition.style.display = "none";  // never shown separately anymore
 
     compGrammarNote.style.display = "none";
     if (item.grammar_note) {
@@ -699,19 +751,15 @@
   showTranslationBtn.addEventListener("click", () => {
     const item = batch[currentIndex];
     compTranslation.style.display = "block";
-    compTargetWord.style.display = "block";
-    compTargetWord.classList.add("fade-in");
-    if (item.german_definition) {
-      compDefinition.style.display = "block";
-      compDefinition.classList.add("fade-in");
-    }
+    compTranslation.classList.add("fade-in");
+    compWordCard.style.display = "block";
+    compWordCard.classList.add("fade-in");
     if (item.grammar_note) {
       compGrammarNote.style.display = "block";
       compGrammarNote.classList.add("fade-in");
     }
     showTranslationBtn.style.display = "none";
     compButtons.style.display = "flex";
-    compTranslation.classList.add("fade-in");
     compButtons.classList.add("fade-in");
   });
 
@@ -790,13 +838,19 @@
     mcTranslation.textContent = item.translation;
     mcTranslation.style.display = "block";
 
-    mcTargetWord.innerHTML = `<strong>Word:</strong> ${escHtml(item.german)}${inSentence !== item.german ? ` → <em>${escHtml(inSentence)}</em>` : ""}`;
-    mcTargetWord.style.display = "block";
+    mcWordCard.className = "";
+    mcWordCard.innerHTML = buildWordCard({
+      german: item.german,
+      article: item.article,
+      plural: item.plural,
+      preteritum: item.preteritum,
+      partizip2: item.partizip2,
+      german_definition: item.german_definition,
+      english_translation: item.english_translation,
+      form_in_sentence: inSentence,
+    });
+    mcWordCard.style.display = "block";
 
-    if (item.german_definition) {
-      mcDefinition.innerHTML = `<strong>Deutsch:</strong> ${escHtml(item.german_definition)}`;
-      mcDefinition.style.display = "block";
-    }
     if (item.grammar_note) {
       mcGrammarNote.innerHTML = `<strong>Grammar:</strong> ${escHtml(item.grammar_note)}`;
       mcGrammarNote.style.display = "block";
@@ -849,19 +903,23 @@
   });
 
   function showFillRevealDetails(item) {
-    // Translation
     fillTranslation.textContent = item.translation;
     fillTranslation.style.display = "block";
 
-    // Target word (dictionary form + conjugated form if different)
     const inSentence = item.blank_answer || item.word_in_sentence || item.german;
-    fillTargetWord.innerHTML = `<strong>Word:</strong> ${escHtml(item.german)}${inSentence !== item.german ? ` → <em>${escHtml(inSentence)}</em>` : ""}`;
-    fillTargetWord.style.display = "block";
+    fillWordCard.className = "";
+    fillWordCard.innerHTML = buildWordCard({
+      german: item.german,
+      article: item.article,
+      plural: item.plural,
+      preteritum: item.preteritum,
+      partizip2: item.partizip2,
+      german_definition: item.german_definition,
+      english_translation: item.english_translation,
+      form_in_sentence: inSentence,
+    });
+    fillWordCard.style.display = "block";
 
-    if (item.german_definition) {
-      fillDefinition.innerHTML = `<strong>Deutsch:</strong> ${escHtml(item.german_definition)}`;
-      fillDefinition.style.display = "block";
-    }
     if (item.grammar_note) {
       fillGrammarNote.innerHTML = `<strong>Grammar:</strong> ${escHtml(item.grammar_note)}`;
       fillGrammarNote.style.display = "block";
@@ -921,9 +979,15 @@
   function showSentenceWrite(item) {
     modeSW.style.display = "block";
 
-    swWord.textContent = item.german;
-    swDefinition.textContent = item.german_definition || "";
-    swDefinition.style.display = item.german_definition ? "block" : "none";
+    swWordCardSlot.innerHTML = buildWordCard({
+      german: item.german,
+      article: item.article,
+      plural: item.plural,
+      preteritum: item.preteritum,
+      partizip2: item.partizip2,
+      german_definition: item.german_definition,
+      english_translation: item.english_translation,
+    });
 
     // Grammar challenge card
     const gr = item.sw_grammar;
@@ -1261,16 +1325,16 @@
 
     if (!wu) return;
 
-    // Build popup content
-    const articlePart = wu.article ? `${escHtml(wu.article)} ` : "";
-    const pluralPart = wu.plural ? ` &nbsp;·&nbsp; Pl. ${escHtml(wu.plural)}` : "";
-    wordPopupWord.innerHTML = `${articlePart}<strong>${escHtml(wu.word)}</strong>`;
-    wordPopupMeta.innerHTML = pluralPart ? `<span class="word-popup-plural">${pluralPart}</span>` : "";
-    wordPopupDefinition.textContent = wu.german_definition || "";
-    wordPopupDefinition.style.display = wu.german_definition ? "block" : "none";
-    wordPopupTranslation.textContent = wu.english_translation || "";
-    wordPopupTranslation.style.display = "none";
-    wordPopupShowTranslation.style.display = wu.english_translation ? "block" : "none";
+    // Build popup content using word card
+    wordPopupContent.innerHTML = buildWordCard({
+      german: wu.word,
+      article: wu.article,
+      plural: wu.plural,
+      preteritum: wu.preteritum,
+      partizip2: wu.partizip2,
+      german_definition: wu.german_definition,
+      english_translation: wu.english_translation,
+    });
 
     // Position popup near the clicked word
     const rect = target.getBoundingClientRect();
@@ -1285,11 +1349,6 @@
   });
 
   wordPopupClose.addEventListener("click", hideWordPopup);
-
-  wordPopupShowTranslation.addEventListener("click", () => {
-    wordPopupShowTranslation.style.display = "none";
-    wordPopupTranslation.style.display = "block";
-  });
 
   document.addEventListener("click", (e) => {
     if (!wordPopup.contains(e.target) && !e.target.closest(".vocab-word")) {
@@ -1320,27 +1379,24 @@
 
     const wordsUsed = passageData.words_used || [];
     passageWordListEl.innerHTML = wordsUsed
-      .map((wu) => {
-        const articlePart = wu.article ? `${escHtml(wu.article)} ` : "";
-        const pluralPart = wu.plural ? ` <span class="word-plural">(Pl. ${escHtml(wu.plural)})</span>` : "";
-        const defPart = wu.german_definition
-          ? `<div class="passage-card-def">${escHtml(wu.german_definition)}</div>`
-          : "";
-        const transPart = wu.english_translation
-          ? `<div class="passage-card-trans">${escHtml(wu.english_translation)}</div>`
-          : "";
-        return `
+      .map((wu) => `
           <div class="passage-review-card" id="prcard-${escAttr(wu.word)}">
             <div class="passage-card-info">
-              <div class="passage-card-word">${articlePart}<strong>${escHtml(wu.word)}</strong>${pluralPart}</div>
-              ${defPart}${transPart}
+              ${buildWordCard({
+                german: wu.word,
+                article: wu.article,
+                plural: wu.plural,
+                preteritum: wu.preteritum,
+                partizip2: wu.partizip2,
+                german_definition: wu.german_definition,
+                english_translation: wu.english_translation,
+              })}
             </div>
             <div class="passage-card-btns">
               <button class="btn btn-knew" data-word="${escAttr(wu.word)}" data-correct="true">&#10003; Knew it</button>
               <button class="btn btn-didnt" data-word="${escAttr(wu.word)}" data-correct="false">&#10007; Didn't know</button>
             </div>
-          </div>`;
-      })
+          </div>`)
       .join("");
   }
 
