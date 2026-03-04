@@ -518,9 +518,17 @@ def enrich_all_grammar():
                 gp["rule_name"] = enriched["rule_name"]
                 gp["explanation"] = enriched["explanation"]
                 gp["examples"] = enriched.get("examples", [])
-                updated += 1
+            else:
+                # LLM couldn't parse it — use hint as fallback so we don't retry forever
+                gp["rule_name"] = gp["hint"]
+                gp["explanation"] = ""
+                gp["examples"] = []
         except Exception:
-            continue  # skip on failure, don't block the rest
+            # Mark as processed with fallback so the banner doesn't reappear
+            gp["rule_name"] = gp["hint"]
+            gp["explanation"] = ""
+            gp["examples"] = []
+        updated += 1
 
     if updated:
         save_grammar(grammar_data)
