@@ -795,7 +795,7 @@
     mcFeedback.style.display = "none";
     mcFeedback.className = "fill-feedback";
     mcTranslation.style.display = "none";
-    mcTargetWord.style.display = "none";
+    mcWordCard.style.display = "none";
     mcDefinition.style.display = "none";
     mcGrammarNote.style.display = "none";
   }
@@ -889,7 +889,7 @@
     fillFeedback.style.display = "none";
     fillFeedback.className = "fill-feedback";
     fillTranslation.style.display = "none";
-    fillTargetWord.style.display = "none";
+    fillWordCard.style.display = "none";
     fillDefinition.style.display = "none";
     fillGrammarNote.style.display = "none";
     fillOverride.style.display = "none";
