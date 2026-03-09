@@ -436,6 +436,12 @@ body {
     margin-bottom: 24px;
 }
 
+.practice-mode-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 /* Loading spinner */
 
 .spinner {
