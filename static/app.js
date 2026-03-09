@@ -162,7 +162,6 @@
   const writingDoneBtn = document.getElementById("writing-done-btn");
   const writingWordCardSlot = document.getElementById("writing-word-card-slot");
   const startWritingBtn = document.getElementById("start-writing-btn");
-  const contentEl = document.querySelector(".content");
   const activeBackBtn = document.getElementById("active-back-btn");
   const passageBackBtn = document.getElementById("passage-back-btn");
   const writingBackBtn = document.getElementById("writing-back-btn");
