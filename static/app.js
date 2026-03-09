@@ -143,11 +143,8 @@
   const writingFeedbackSection = document.getElementById("writing-feedback");
   const writingTopicEl = document.getElementById("writing-topic");
   const writingTopicDeEl = document.getElementById("writing-topic-de");
-  const writingGrammarConnectionEl = document.getElementById("writing-grammar-connection");
   const writingGrammarBlock = document.getElementById("writing-grammar-block");
-  const writingGrammarToggle = document.getElementById("writing-grammar-toggle");
   const writingGrammarName = document.getElementById("writing-grammar-name");
-  const writingGrammarDetails = document.getElementById("writing-grammar-details");
   const writingGrammarExplanation = document.getElementById("writing-grammar-explanation");
   const writingGrammarExamples = document.getElementById("writing-grammar-examples");
   const writingWordsGrid = document.getElementById("writing-words-grid");
@@ -164,6 +161,9 @@
   const writingErrorsList = document.getElementById("writing-errors-list");
   const writingDoneBtn = document.getElementById("writing-done-btn");
   const startWritingBtn = document.getElementById("start-writing-btn");
+  const activeBackBtn = document.getElementById("active-back-btn");
+  const passageBackBtn = document.getElementById("passage-back-btn");
+  const writingBackBtn = document.getElementById("writing-back-btn");
 
   // Summary
   const summaryScore = document.getElementById("summary-score");
@@ -484,7 +484,7 @@
   }
 
   function renderGrammar() {
-    grammarCountEl.textContent = `${grammarPoints.length} rule${grammarPoints.length !== 1 ? "s" : ""}`;
+    grammarCountEl.textContent = `${grammarPoints.length} point${grammarPoints.length !== 1 ? "s" : ""}`;
 
     if (grammarPoints.length === 0) {
       grammarListEl.innerHTML =
@@ -553,7 +553,7 @@
   }
 
   window.deleteGrammar = async function (id) {
-    if (!confirm("Delete this grammar hint?")) return;
+    if (!confirm("Delete this grammar point?")) return;
 
     try {
       await api("DELETE", `/api/grammar/${encodeURIComponent(id)}`);
@@ -1158,6 +1158,33 @@
     }
   }
 
+  // --- Back buttons ---
+
+  function confirmBack() {
+    return confirm("Go back to the practice menu? Your current progress will be lost.");
+  }
+
+  activeBackBtn.addEventListener("click", () => {
+    if (!confirmBack()) return;
+    batch = [];
+    currentIndex = 0;
+    correctCount = 0;
+    showPracticeState(practiceIdle);
+  });
+
+  passageBackBtn.addEventListener("click", () => {
+    if (!confirmBack()) return;
+    passageData = null;
+    passageRatings = {};
+    showPracticeState(practiceIdle);
+  });
+
+  writingBackBtn.addEventListener("click", () => {
+    if (!confirmBack()) return;
+    writingSetupData = null;
+    showPracticeState(practiceIdle);
+  });
+
   // --- Reading Passage mode ---
 
   startPassageBtn.addEventListener("click", startPassage);
@@ -1292,7 +1319,7 @@
   wordPopupClose.addEventListener("click", hideWordPopup);
 
   document.addEventListener("click", (e) => {
-    if (!wordPopup.contains(e.target) && !e.target.closest(".vocab-word")) {
+    if (!wordPopup.contains(e.target) && !e.target.closest(".vocab-word") && !e.target.closest(".writing-word-chip")) {
       hideWordPopup();
     }
   });
@@ -1400,9 +1427,8 @@
     // Topic
     writingTopicEl.textContent = d.topic || "";
     writingTopicDeEl.textContent = d.topic_de || "";
-    writingGrammarConnectionEl.textContent = d.grammar_connection || "";
 
-    // Grammar hint (collapsible)
+    // Grammar point (always visible)
     const gh = d.grammar_hint;
     if (gh && gh.rule_name) {
       writingGrammarName.textContent = gh.rule_name;
@@ -1411,7 +1437,6 @@
         .map((ex) => `<li><span class="writing-ex-de">${escHtml(ex.german || ex)}</span>${ex.english ? `<span class="writing-ex-en">${escHtml(ex.english)}</span>` : ""}</li>`)
         .join("");
       writingGrammarBlock.style.display = "block";
-      writingGrammarDetails.style.display = "none";
     } else {
       writingGrammarBlock.style.display = "none";
     }
@@ -1434,13 +1459,6 @@
     showPracticeState(practiceWriting);
     setTimeout(() => writingInput.focus(), 100);
   }
-
-  // Grammar hint toggle
-  writingGrammarToggle.addEventListener("click", () => {
-    const open = writingGrammarDetails.style.display !== "none";
-    writingGrammarDetails.style.display = open ? "none" : "block";
-    writingGrammarToggle.querySelector(".writing-toggle-arrow").innerHTML = open ? "&#9660;" : "&#9650;";
-  });
 
   // Word chip click → show popup
   writingWordsGrid.addEventListener("click", (e) => {

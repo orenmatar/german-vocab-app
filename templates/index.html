@@ -67,7 +67,7 @@
                 </div>
 
                 <div class="word-list-header">
-                    <span id="grammar-count">0 hints</span>
+                    <span id="grammar-count">0 points</span>
                 </div>
 
                 <div id="grammar-list" class="word-list">
@@ -114,6 +114,9 @@
 
                 <!-- Active practice -->
                 <div id="practice-active" class="practice-state" style="display:none;">
+                    <div class="practice-back-row">
+                        <button class="practice-back-btn" id="active-back-btn">&#8592; Back</button>
+                    </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" id="progress-bar"></div>
                     </div>
@@ -204,6 +207,9 @@
 
                 <!-- Passage practice state -->
                 <div id="practice-passage" class="practice-state" style="display:none;">
+                    <div class="practice-back-row">
+                        <button class="practice-back-btn" id="passage-back-btn">&#8592; Back</button>
+                    </div>
                     <div class="passage-container">
 
                         <!-- Reading section -->
@@ -232,43 +238,51 @@
 
                 <!-- Writing Passage state -->
                 <div id="practice-writing" class="practice-state" style="display:none;">
-                    <div class="passage-container">
+                    <div class="practice-back-row practice-back-row--wide">
+                        <button class="practice-back-btn" id="writing-back-btn">&#8592; Back</button>
+                    </div>
+                    <div class="writing-container">
 
                         <!-- Writing setup section -->
                         <div id="writing-setup">
                             <div class="practice-label">Writing Passage</div>
 
-                            <div class="writing-topic-block">
-                                <div class="writing-topic-label">Your topic</div>
-                                <div class="writing-topic-text" id="writing-topic"></div>
-                                <div class="writing-topic-de" id="writing-topic-de"></div>
-                                <div class="writing-grammar-connection" id="writing-grammar-connection"></div>
-                            </div>
+                            <div class="writing-layout">
+                                <!-- Main column: topic + textarea -->
+                                <div class="writing-main">
+                                    <div class="writing-topic-block">
+                                        <div class="writing-topic-label">Your topic</div>
+                                        <div class="writing-topic-text" id="writing-topic"></div>
+                                        <div class="writing-topic-de" id="writing-topic-de"></div>
+                                    </div>
 
-                            <div class="writing-grammar-block" id="writing-grammar-block" style="display:none;">
-                                <button class="writing-grammar-toggle" id="writing-grammar-toggle">
-                                    Grammar hint: <span id="writing-grammar-name"></span>
-                                    <span class="writing-toggle-arrow">&#9660;</span>
-                                </button>
-                                <div class="writing-grammar-details" id="writing-grammar-details" style="display:none;">
-                                    <div id="writing-grammar-explanation"></div>
-                                    <ul id="writing-grammar-examples"></ul>
+                                    <div class="writing-input-block">
+                                        <textarea id="writing-input" placeholder="Write your paragraph in German here..." rows="8"></textarea>
+                                        <button id="writing-submit-btn" class="btn btn-primary btn-large">Submit</button>
+                                    </div>
+
+                                    <div id="writing-loading" class="audio-loading" style="display:none;">
+                                        <div class="spinner-small"></div>
+                                        <span>Checking your writing...</span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="writing-words-block">
-                                <div class="writing-words-label">Suggested vocabulary — click any word to see its meaning:</div>
-                                <div class="writing-words-grid" id="writing-words-grid"></div>
-                            </div>
+                                <!-- Sidebar: grammar point + words -->
+                                <div class="writing-sidebar">
+                                    <div class="writing-grammar-block" id="writing-grammar-block" style="display:none;">
+                                        <div class="writing-grammar-label">Grammar point</div>
+                                        <div class="writing-grammar-name-text" id="writing-grammar-name"></div>
+                                        <div id="writing-grammar-details">
+                                            <div id="writing-grammar-explanation"></div>
+                                            <ul id="writing-grammar-examples"></ul>
+                                        </div>
+                                    </div>
 
-                            <div class="writing-input-block">
-                                <textarea id="writing-input" placeholder="Write your paragraph in German here..." rows="7"></textarea>
-                                <button id="writing-submit-btn" class="btn btn-primary btn-large">Submit</button>
-                            </div>
-
-                            <div id="writing-loading" class="audio-loading" style="display:none;">
-                                <div class="spinner-small"></div>
-                                <span>Checking your writing...</span>
+                                    <div class="writing-words-block">
+                                        <div class="writing-words-label">Suggested vocabulary:</div>
+                                        <div class="writing-words-grid" id="writing-words-grid"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -282,7 +296,7 @@
                             <div class="writing-overall-feedback" id="writing-overall-feedback"></div>
 
                             <div class="writing-section" id="writing-grammar-section" style="display:none;">
-                                <div class="writing-section-title">Grammar hint</div>
+                                <div class="writing-section-title">Grammar point</div>
                                 <div id="writing-grammar-feedback"></div>
                             </div>
 
