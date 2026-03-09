@@ -1492,7 +1492,7 @@ body {
 
 .writing-layout {
     display: grid;
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: 1fr 1fr;
     gap: 28px;
     align-items: start;
 }
