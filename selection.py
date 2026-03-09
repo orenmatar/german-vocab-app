@@ -44,7 +44,13 @@ def compute_weight(word):
         hours_since = (datetime.now() - datetime.fromisoformat(last_seen)).total_seconds() / 3600
         recency = min(2.0, 1.0 + hours_since / 48.0)
 
-    return base * recency
+    weight = base * recency
+
+    # Starred words get a 2× boost
+    if word.get("starred", False):
+        weight *= 2.0
+
+    return weight
 
 
 def weighted_sample(words, count):
@@ -113,11 +119,6 @@ def pick_mode(word):
     - Box 2: mostly multiple choice, sometimes comprehension
     - Box 3+: mix of fill-in-the-blank, multiple choice, and comprehension
     """
-    # Sentence writing — check first, before other mode decisions
-    if word["box"] >= settings.get("SENTENCE_WRITING_MIN_BOX"):
-        if random.random() < settings.get("SENTENCE_WRITING_PROBABILITY"):
-            return "sentence_writing"
-
     if word["box"] < settings.get("MULTIPLE_CHOICE_MIN_BOX"):
         return "comprehension"
 

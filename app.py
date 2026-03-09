@@ -165,6 +165,7 @@ def add_word():
         "partizip2": body.get("partizip2", "").strip(),
         "added_at": datetime.now().isoformat(),
         "box": 1,
+        "starred": False,
         "times_seen": 0,
         "times_correct": 0,
         "last_seen": None,
@@ -202,6 +203,18 @@ def validate_word():
     return jsonify(result)
 
 
+@app.route("/api/words/<german>", methods=["PATCH"])
+def patch_word(german):
+    body = request.get_json()
+    word = find_word(data, german)
+    if not word:
+        return jsonify({"error": f"'{german}' not found."}), 404
+    if "starred" in body:
+        word["starred"] = bool(body["starred"])
+    save_data(data)
+    return jsonify(word)
+
+
 @app.route("/api/words/<german>", methods=["DELETE"])
 def delete_word(german):
     word = find_word(data, german)
@@ -229,11 +242,9 @@ def practice_batch():
         len(selected), grammar_data["grammar_points"]
     )
 
-    # Build enriched word objects for the LLM (skip sentence_writing words)
+    # Build enriched word objects for the LLM
     word_list = []
     for i, (word, mode) in enumerate(selected):
-        if mode == "sentence_writing":
-            continue
         entry = {
             "word": word["german"],
             "context_note": word.get("context_note", ""),
@@ -245,7 +256,7 @@ def practice_batch():
             entry["grammar_hint"] = grammar_assignments[i]
         word_list.append(entry)
 
-    # Call LLM for non-sentence-writing words
+    # Call LLM for all words
     sentence_map = {}
     if word_list:
         # Load the prompt from file
@@ -276,42 +287,6 @@ def practice_batch():
     batch = []
     for i, (word, mode) in enumerate(selected):
         german = word["german"]
-
-        if mode == "sentence_writing":
-            # Optionally attach a grammar challenge (enriched points only)
-            sw_grammar = None
-            enriched_gps = [
-                gp for gp in grammar_data["grammar_points"]
-                if gp.get("enabled", True) and gp.get("rule_name")
-            ]
-            if enriched_gps and random.random() < 0.6:
-                gp = random.choice(enriched_gps)
-                sw_grammar = {
-                    "rule_name": gp["rule_name"],
-                    "hint": gp["hint"],
-                    "explanation": gp["explanation"],
-                    "examples": gp.get("examples", []),
-                }
-
-            item = {
-                "german": german,
-                "mode": mode,
-                "sentence": "",
-                "translation": "",
-                "blank_sentence": "",
-                "blank_answer": german,
-                "german_definition": word.get("german_definition", ""),
-                "english_translation": word.get("english_translation", ""),
-                "article": word.get("article", ""),
-                "plural": word.get("plural", ""),
-                "preteritum": word.get("preteritum", ""),
-                "partizip2": word.get("partizip2", ""),
-                "word_in_sentence": german,
-                "grammar_note": "",
-                "sw_grammar": sw_grammar,
-            }
-            batch.append(item)
-            continue
 
         s = sentence_map.get(german)
         if not s:
@@ -432,32 +407,92 @@ def practice_passage():
     return jsonify(result)
 
 
-@app.route("/api/practice/judge", methods=["POST"])
-def practice_judge():
+@app.route("/api/practice/writing-setup", methods=["POST"])
+def practice_writing_setup():
+    """Generate a writing passage prompt: grammar hint + suggested words + topic."""
+    if not data["words"]:
+        return jsonify({"error": "No words added yet."}), 400
+
+    # Pick a random enabled grammar point (prefer enriched ones)
+    enriched_gps = [
+        gp for gp in grammar_data["grammar_points"]
+        if gp.get("enabled", True) and gp.get("rule_name")
+    ]
+    grammar_hint = None
+    if enriched_gps:
+        gp = random.choice(enriched_gps)
+        grammar_hint = {
+            "rule_name": gp["rule_name"],
+            "hint": gp["hint"],
+            "explanation": gp["explanation"],
+            "examples": gp.get("examples", []),
+        }
+
+    # Pick up to 10 suggested words (weighted sample)
+    candidates = weighted_sample(data["words"], min(10, len(data["words"])))
+    suggested_words = [
+        {
+            "german": w["german"],
+            "article": w.get("article", ""),
+            "plural": w.get("plural", ""),
+            "preteritum": w.get("preteritum", ""),
+            "partizip2": w.get("partizip2", ""),
+            "german_definition": w.get("german_definition", ""),
+            "english_translation": w.get("english_translation", ""),
+        }
+        for w in candidates
+    ]
+
+    # Generate topic via LLM
+    system_prompt = (PROMPTS_DIR / "generate_writing_topic.txt").read_text(encoding="utf-8")
+    user_prompt = json.dumps(
+        {
+            "grammar_hint": grammar_hint,
+            "suggested_words": [
+                {"word": w["german"], "english_translation": w["english_translation"]}
+                for w in suggested_words
+            ],
+        },
+        ensure_ascii=False,
+    )
+
+    try:
+        response_text = call_llm(system_prompt, user_prompt)
+        topic_data = parse_json_response(response_text)
+    except Exception as e:
+        return jsonify({"error": f"LLM call failed: {str(e)}"}), 500
+
+    return jsonify({
+        "grammar_hint": grammar_hint,
+        "suggested_words": suggested_words,
+        "topic": topic_data.get("topic", ""),
+        "topic_de": topic_data.get("topic_de", ""),
+        "grammar_connection": topic_data.get("grammar_connection", ""),
+    })
+
+
+@app.route("/api/practice/writing-judge", methods=["POST"])
+def practice_writing_judge():
+    """Grade a user-written German paragraph."""
     body = request.get_json()
-    word = body.get("word", "").strip()
-    sentence = body.get("sentence", "").strip()
-    german_definition = body.get("german_definition", "").strip()
+    passage = body.get("passage", "").strip()
+    topic = body.get("topic", "").strip()
+    grammar_hint = body.get("grammar_hint")
+    suggested_word_names = body.get("suggested_words", [])
 
-    if not word or not sentence:
-        return jsonify({"error": "Word and sentence are required."}), 400
+    if not passage:
+        return jsonify({"error": "Passage is required."}), 400
 
-    prompt_path = PROMPTS_DIR / "judge_sentence.txt"
-    system_prompt = prompt_path.read_text(encoding="utf-8")
-
-    grammar_rule = body.get("grammar_rule", "").strip()
-    rule_name = body.get("rule_name", "").strip()
-
-    judge_input = {
-        "word": word,
-        "german_definition": german_definition,
-        "sentence": sentence,
-    }
-    if grammar_rule:
-        judge_input["grammar_rule"] = grammar_rule
-        judge_input["rule_name"] = rule_name
-
-    user_prompt = json.dumps(judge_input, ensure_ascii=False)
+    system_prompt = (PROMPTS_DIR / "judge_writing_passage.txt").read_text(encoding="utf-8")
+    user_prompt = json.dumps(
+        {
+            "passage": passage,
+            "topic": topic,
+            "grammar_hint": grammar_hint,
+            "suggested_words": suggested_word_names,
+        },
+        ensure_ascii=False,
+    )
 
     try:
         response_text = call_llm(system_prompt, user_prompt)

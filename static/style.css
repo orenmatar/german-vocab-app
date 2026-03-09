@@ -222,6 +222,32 @@ body {
     color: var(--wrong);
 }
 
+.btn-star {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 1rem;
+    border-radius: 4px;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.btn-star:hover {
+    color: #e8a000;
+}
+
+.btn-star.starred {
+    color: #e8a000;
+}
+
+.star-filter-btn.active {
+    background: #fff8e1;
+    border-color: #e8c400;
+    color: #b07400;
+}
+
 .btn-ghost {
     background: transparent;
     border: 1px solid var(--border);
@@ -1401,6 +1427,308 @@ body {
 }
 
 .passage-finish-area {
+    text-align: center;
+    padding-top: 8px;
+}
+
+/* --- Writing Passage mode --- */
+
+.writing-topic-block {
+    background: var(--accent-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 18px;
+}
+
+.writing-topic-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 6px;
+}
+
+.writing-topic-text {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.writing-topic-de {
+    font-family: var(--font-serif);
+    font-size: 0.95rem;
+    color: var(--text-light);
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.writing-grammar-connection {
+    font-size: 0.83rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.writing-grammar-block {
+    margin-bottom: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.writing-grammar-toggle {
+    width: 100%;
+    background: var(--bg);
+    border: none;
+    padding: 11px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.writing-grammar-toggle:hover {
+    background: var(--accent-light);
+}
+
+.writing-grammar-toggle span:first-of-type {
+    color: var(--accent);
+}
+
+.writing-toggle-arrow {
+    color: var(--text-light);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.writing-grammar-details {
+    padding: 12px 16px;
+    background: var(--bg-card);
+    font-size: 0.88rem;
+    color: var(--text-light);
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+}
+
+.writing-grammar-details ul {
+    margin: 8px 0 0 18px;
+    padding: 0;
+}
+
+.writing-grammar-details li {
+    margin-bottom: 6px;
+}
+
+.writing-ex-de {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-serif);
+}
+
+.writing-ex-en {
+    display: block;
+    color: var(--text-light);
+    font-style: italic;
+    font-size: 0.83rem;
+}
+
+.writing-words-block {
+    margin-bottom: 18px;
+}
+
+.writing-words-label {
+    font-size: 0.83rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.writing-words-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.writing-word-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-family: var(--font-serif);
+    font-size: 0.88rem;
+    cursor: pointer;
+    color: var(--accent);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.writing-word-chip:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+}
+
+.writing-input-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.writing-input-block textarea {
+    width: 100%;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.writing-input-block textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.writing-score-row {
+    margin-bottom: 12px;
+}
+
+.writing-score-badge {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: 18px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.writing-score-badge.good {
+    background: var(--correct-bg);
+    color: var(--correct);
+    border: 1px solid var(--correct);
+}
+
+.writing-score-badge.okay {
+    background: #fff8e1;
+    color: #b07400;
+    border: 1px solid #e8c400;
+}
+
+.writing-score-badge.needs_work {
+    background: var(--wrong-bg);
+    color: var(--wrong);
+    border: 1px solid var(--wrong);
+}
+
+.writing-overall-feedback {
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 18px;
+}
+
+.writing-section {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.writing-section-title {
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-light);
+    margin-bottom: 8px;
+}
+
+.writing-grammar-used {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.writing-grammar-used.yes {
+    color: var(--correct);
+}
+
+.writing-grammar-used.no {
+    color: var(--wrong);
+}
+
+.writing-grammar-feedback-text {
+    font-size: 0.88rem;
+    color: var(--text);
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+.writing-vocab-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.writing-vocab-chip {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 3px 12px;
+    font-family: var(--font-serif);
+    font-size: 0.85rem;
+}
+
+.writing-error-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.writing-error-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.writing-error-original {
+    font-family: var(--font-serif);
+    color: var(--wrong);
+    text-decoration: line-through;
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+}
+
+.writing-error-corrected {
+    font-family: var(--font-serif);
+    color: var(--correct);
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.writing-error-explanation {
+    font-size: 0.83rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.writing-done-area {
     text-align: center;
     padding-top: 8px;
 }

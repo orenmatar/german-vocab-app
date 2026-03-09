@@ -17,9 +17,15 @@
   let currentAudioData = null;
   let currentPlaybackSpeed = 1;
 
+  // Word list filter
+  let filterStarred = false;
+
   // Passage state
   let passageData = null;
   let passageRatings = {};
+
+  // Writing passage state
+  let writingSetupData = null;
 
   // --- DOM refs ---
   const tabs = document.querySelectorAll(".nav-tab");
@@ -36,6 +42,7 @@
   const wordCountEl = document.getElementById("word-count");
   const wordListEl = document.getElementById("word-list");
   const sortSelect = document.getElementById("sort-select");
+  const starFilterBtn = document.getElementById("star-filter-btn");
 
   // Grammar
   const newGrammarInput = document.getElementById("new-grammar");
@@ -130,21 +137,33 @@
   const fillOverrideBtn = document.getElementById("fill-override-btn");
   const fillNextBtn = document.getElementById("fill-next-btn");
 
-  // Sentence writing mode
-  const modeSW = document.getElementById("mode-sentence-write");
-  const swWordCardSlot = document.getElementById("sw-word-card-slot");
-  const swGrammarCard = document.getElementById("sw-grammar-card");
-  const swGrammarRuleName = document.getElementById("sw-grammar-rule-name");
-  const swGrammarExplanation = document.getElementById("sw-grammar-explanation");
-  const swGrammarExamples = document.getElementById("sw-grammar-examples");
-  const swInput = document.getElementById("sw-input");
-  const swSubmitBtn = document.getElementById("sw-submit-btn");
-  const swLoading = document.getElementById("sw-loading");
-  const swFeedback = document.getElementById("sw-feedback");
-  const swFeedbackText = document.getElementById("sw-feedback-text");
-  const swCorrected = document.getElementById("sw-corrected");
-  const swExplanation = document.getElementById("sw-explanation");
-  const swNextBtn = document.getElementById("sw-next-btn");
+  // Writing passage mode
+  const practiceWriting = document.getElementById("practice-writing");
+  const writingSetupSection = document.getElementById("writing-setup");
+  const writingFeedbackSection = document.getElementById("writing-feedback");
+  const writingTopicEl = document.getElementById("writing-topic");
+  const writingTopicDeEl = document.getElementById("writing-topic-de");
+  const writingGrammarConnectionEl = document.getElementById("writing-grammar-connection");
+  const writingGrammarBlock = document.getElementById("writing-grammar-block");
+  const writingGrammarToggle = document.getElementById("writing-grammar-toggle");
+  const writingGrammarName = document.getElementById("writing-grammar-name");
+  const writingGrammarDetails = document.getElementById("writing-grammar-details");
+  const writingGrammarExplanation = document.getElementById("writing-grammar-explanation");
+  const writingGrammarExamples = document.getElementById("writing-grammar-examples");
+  const writingWordsGrid = document.getElementById("writing-words-grid");
+  const writingInput = document.getElementById("writing-input");
+  const writingSubmitBtn = document.getElementById("writing-submit-btn");
+  const writingLoadingEl = document.getElementById("writing-loading");
+  const writingScoreBadge = document.getElementById("writing-score-badge");
+  const writingOverallFeedback = document.getElementById("writing-overall-feedback");
+  const writingGrammarSection = document.getElementById("writing-grammar-section");
+  const writingGrammarFeedbackEl = document.getElementById("writing-grammar-feedback");
+  const writingVocabSection = document.getElementById("writing-vocab-section");
+  const writingVocabUsed = document.getElementById("writing-vocab-used");
+  const writingErrorsSection = document.getElementById("writing-errors-section");
+  const writingErrorsList = document.getElementById("writing-errors-list");
+  const writingDoneBtn = document.getElementById("writing-done-btn");
+  const startWritingBtn = document.getElementById("start-writing-btn");
 
   // Summary
   const summaryScore = document.getElementById("summary-score");
@@ -275,15 +294,22 @@
       sorted.sort((a, b) => (b.added_at || "").localeCompare(a.added_at || ""));
     }
 
-    wordCountEl.textContent = `${words.length} item${words.length !== 1 ? "s" : ""}`;
+    // Apply starred filter
+    const displayed = filterStarred ? sorted.filter((w) => w.starred) : sorted;
 
-    if (sorted.length === 0) {
-      wordListEl.innerHTML =
-        '<div style="text-align:center;color:var(--text-light);padding:40px;">No words yet. Add your first German word or phrase above!</div>';
+    const countLabel = filterStarred
+      ? `${displayed.length} starred / ${words.length} total`
+      : `${words.length} item${words.length !== 1 ? "s" : ""}`;
+    wordCountEl.textContent = countLabel;
+
+    if (displayed.length === 0) {
+      wordListEl.innerHTML = filterStarred
+        ? '<div style="text-align:center;color:var(--text-light);padding:40px;">No starred words yet. Click the ★ next to any word to star it.</div>'
+        : '<div style="text-align:center;color:var(--text-light);padding:40px;">No words yet. Add your first German word or phrase above!</div>';
       return;
     }
 
-    wordListEl.innerHTML = sorted
+    wordListEl.innerHTML = displayed
       .map((w) => {
         const dots = Array.from({ length: 5 }, (_, i) =>
           `<span class="box-dot${i < w.box ? " filled" : ""}"></span>`
@@ -300,6 +326,9 @@
           ? `<div class="word-item-details">${detailParts.join(" &mdash; ")}</div>`
           : "";
 
+        const starClass = w.starred ? "btn-star starred" : "btn-star";
+        const starTitle = w.starred ? "Unstar this word" : "Star this word (prioritises it in practice)";
+
         return `
         <div class="word-item fade-in">
           <div class="word-item-main">
@@ -307,6 +336,7 @@
             <span class="word-box">${dots}</span>
             <span class="word-stats">${w.times_correct}/${w.times_seen} correct</span>
             <span class="word-actions">
+              <button class="${starClass}" onclick="toggleStar('${escAttr(w.german)}')" title="${starTitle}">&#9733;</button>
               <button class="btn-delete" onclick="deleteWord('${escAttr(w.german)}')" title="Delete">&#x2715;</button>
             </span>
           </div>
@@ -407,7 +437,26 @@
     }
   };
 
+  window.toggleStar = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newStarred = !word.starred;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { starred: newStarred });
+      word.starred = newStarred;
+      renderWords();
+    } catch (e) {
+      alert("Failed to update star: " + e.message);
+    }
+  };
+
   sortSelect.addEventListener("change", renderWords);
+
+  starFilterBtn.addEventListener("click", () => {
+    filterStarred = !filterStarred;
+    starFilterBtn.classList.toggle("active", filterStarred);
+    renderWords();
+  });
 
   // --- Grammar ---
 
@@ -559,7 +608,7 @@
   // --- Practice ---
 
   function showPracticeState(state) {
-    [practiceIdle, practiceLoading, practiceError, practiceActive, practiceSummary, practicePassage].forEach(
+    [practiceIdle, practiceLoading, practiceError, practiceActive, practiceSummary, practicePassage, practiceWriting].forEach(
       (el) => (el.style.display = "none")
     );
     state.style.display = "flex";
@@ -625,14 +674,11 @@
     modeComp.style.display = "none";
     modeMC.style.display = "none";
     modeFill.style.display = "none";
-    modeSW.style.display = "none";
 
     if (item.mode === "comprehension") {
       showComprehension(item);
     } else if (item.mode === "multiple_choice") {
       showMultipleChoice(item);
-    } else if (item.mode === "sentence_writing") {
-      showSentenceWrite(item);
     } else {
       showFillInBlank(item);
     }
@@ -970,111 +1016,6 @@
   });
 
   fillNextBtn.addEventListener("click", () => {
-    if (!currentAnswered) return;
-    advanceToNext();
-  });
-
-  // --- Sentence writing mode ---
-
-  function showSentenceWrite(item) {
-    modeSW.style.display = "block";
-
-    swWordCardSlot.innerHTML = buildWordCard({
-      german: item.german,
-      article: item.article,
-      plural: item.plural,
-      preteritum: item.preteritum,
-      partizip2: item.partizip2,
-      german_definition: item.german_definition,
-      english_translation: item.english_translation,
-    });
-
-    // Grammar challenge card
-    const gr = item.sw_grammar;
-    if (gr) {
-      swGrammarRuleName.textContent = gr.rule_name;
-      swGrammarExplanation.textContent = gr.explanation;
-      swGrammarExamples.innerHTML = (gr.examples || [])
-        .map((ex) => `<li><span class="sw-ex-de">${escHtml(ex.german)}</span><span class="sw-ex-en">${escHtml(ex.english)}</span></li>`)
-        .join("");
-      swGrammarCard.style.display = "block";
-    } else {
-      swGrammarCard.style.display = "none";
-    }
-
-    swInput.value = "";
-    swInput.disabled = false;
-    swSubmitBtn.disabled = false;
-    swLoading.style.display = "none";
-    swFeedback.style.display = "none";
-    swFeedback.className = "fill-feedback";
-    swCorrected.style.display = "none";
-    swExplanation.style.display = "none";
-
-    setTimeout(() => swInput.focus(), 50);
-  }
-
-  swSubmitBtn.addEventListener("click", checkSentenceWrite);
-  swInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey && !currentAnswered) {
-      e.preventDefault();
-      checkSentenceWrite();
-    }
-  });
-
-  async function checkSentenceWrite() {
-    if (currentAnswered) return;
-    const item = batch[currentIndex];
-    const sentence = swInput.value.trim();
-    if (!sentence) return;
-
-    currentAnswered = true;
-    swInput.disabled = true;
-    swSubmitBtn.disabled = true;
-    swLoading.style.display = "flex";
-
-    try {
-      const judgePayload = {
-        word: item.german,
-        sentence: sentence,
-        german_definition: item.german_definition || "",
-      };
-      if (item.sw_grammar) {
-        judgePayload.grammar_rule = item.sw_grammar.hint;
-        judgePayload.rule_name = item.sw_grammar.rule_name;
-      }
-      const result = await api("POST", "/api/practice/judge", judgePayload);
-
-      swLoading.style.display = "none";
-      swFeedback.style.display = "block";
-      swFeedback.classList.add("fade-in");
-
-      if (result.correct) {
-        swFeedback.classList.add("correct");
-        swFeedbackText.textContent = "Correct!";
-      } else {
-        swFeedback.classList.add("wrong");
-        swFeedbackText.textContent = "Not quite right.";
-      }
-
-      if (result.corrected_sentence && !result.correct) {
-        swCorrected.innerHTML = `<strong>Corrected:</strong> ${escHtml(result.corrected_sentence)}`;
-        swCorrected.style.display = "block";
-      }
-
-      if (result.explanation) {
-        swExplanation.innerHTML = `<strong>Feedback:</strong> ${escHtml(result.explanation)}`;
-        swExplanation.style.display = "block";
-      }
-    } catch (e) {
-      swLoading.style.display = "none";
-      swFeedback.style.display = "block";
-      swFeedback.classList.add("wrong");
-      swFeedbackText.textContent = "Failed to check sentence: " + e.message;
-    }
-  }
-
-  swNextBtn.addEventListener("click", () => {
     if (!currentAnswered) return;
     advanceToNext();
   });
@@ -1427,6 +1368,201 @@
     // Reset and go back to idle, then reload words
     passageData = null;
     passageRatings = {};
+    loadingMsg.textContent = "Generating sentences...";
+    showPracticeState(practiceIdle);
+    loadWords();
+  });
+
+  // --- Writing Passage mode ---
+
+  startWritingBtn.addEventListener("click", startWritingPassage);
+
+  async function startWritingPassage() {
+    loadingMsg.textContent = "Preparing writing prompt...";
+    showPracticeState(practiceLoading);
+
+    try {
+      writingSetupData = await api("POST", "/api/practice/writing-setup");
+      showWritingSetup();
+    } catch (e) {
+      loadingMsg.textContent = "Generating sentences...";
+      errorMsg.textContent = e.message;
+      showPracticeState(practiceError);
+    }
+  }
+
+  function showWritingSetup() {
+    writingSetupSection.style.display = "block";
+    writingFeedbackSection.style.display = "none";
+
+    const d = writingSetupData;
+
+    // Topic
+    writingTopicEl.textContent = d.topic || "";
+    writingTopicDeEl.textContent = d.topic_de || "";
+    writingGrammarConnectionEl.textContent = d.grammar_connection || "";
+
+    // Grammar hint (collapsible)
+    const gh = d.grammar_hint;
+    if (gh && gh.rule_name) {
+      writingGrammarName.textContent = gh.rule_name;
+      writingGrammarExplanation.textContent = gh.explanation || "";
+      writingGrammarExamples.innerHTML = (gh.examples || [])
+        .map((ex) => `<li><span class="writing-ex-de">${escHtml(ex.german || ex)}</span>${ex.english ? `<span class="writing-ex-en">${escHtml(ex.english)}</span>` : ""}</li>`)
+        .join("");
+      writingGrammarBlock.style.display = "block";
+      writingGrammarDetails.style.display = "none";
+    } else {
+      writingGrammarBlock.style.display = "none";
+    }
+
+    // Word suggestion chips
+    const words = d.suggested_words || [];
+    writingWordsGrid.innerHTML = words
+      .map((w) => {
+        const label = w.article ? `${w.article} ${w.german}` : w.german;
+        return `<button class="writing-word-chip" data-word="${escAttr(w.german)}">${escHtml(label)}</button>`;
+      })
+      .join("");
+
+    // Reset input area
+    writingInput.value = "";
+    writingInput.disabled = false;
+    writingSubmitBtn.disabled = false;
+    writingLoadingEl.style.display = "none";
+
+    showPracticeState(practiceWriting);
+    setTimeout(() => writingInput.focus(), 100);
+  }
+
+  // Grammar hint toggle
+  writingGrammarToggle.addEventListener("click", () => {
+    const open = writingGrammarDetails.style.display !== "none";
+    writingGrammarDetails.style.display = open ? "none" : "block";
+    writingGrammarToggle.querySelector(".writing-toggle-arrow").innerHTML = open ? "&#9660;" : "&#9650;";
+  });
+
+  // Word chip click → show popup
+  writingWordsGrid.addEventListener("click", (e) => {
+    const chip = e.target.closest(".writing-word-chip");
+    if (!chip) return;
+
+    const wordKey = chip.dataset.word;
+    const wordObj = (writingSetupData.suggested_words || []).find((w) => w.german === wordKey);
+    if (!wordObj) return;
+
+    wordPopupContent.innerHTML = buildWordCard({
+      german: wordObj.german,
+      article: wordObj.article,
+      plural: wordObj.plural,
+      preteritum: wordObj.preteritum,
+      partizip2: wordObj.partizip2,
+      german_definition: wordObj.german_definition,
+      english_translation: wordObj.english_translation,
+    });
+
+    const rect = chip.getBoundingClientRect();
+    wordPopup.style.display = "block";
+    const popupWidth = 280;
+    let left = rect.left + window.scrollX;
+    if (left + popupWidth > window.innerWidth - 16) {
+      left = window.innerWidth - popupWidth - 16;
+    }
+    wordPopup.style.left = Math.max(8, left) + "px";
+    wordPopup.style.top = (rect.bottom + window.scrollY + 8) + "px";
+  });
+
+  // Submit writing
+  writingSubmitBtn.addEventListener("click", submitWritingPassage);
+
+  async function submitWritingPassage() {
+    const passage = writingInput.value.trim();
+    if (!passage) return;
+
+    writingInput.disabled = true;
+    writingSubmitBtn.disabled = true;
+    writingLoadingEl.style.display = "flex";
+
+    const d = writingSetupData;
+    const suggestedWordNames = (d.suggested_words || []).map((w) => w.german);
+
+    try {
+      const result = await api("POST", "/api/practice/writing-judge", {
+        passage,
+        topic: d.topic || "",
+        grammar_hint: d.grammar_hint || null,
+        suggested_words: suggestedWordNames,
+      });
+
+      writingLoadingEl.style.display = "none";
+      showWritingFeedback(result);
+    } catch (e) {
+      writingLoadingEl.style.display = "none";
+      writingInput.disabled = false;
+      writingSubmitBtn.disabled = false;
+      alert("Failed to check your writing: " + e.message);
+    }
+  }
+
+  function showWritingFeedback(result) {
+    writingSetupSection.style.display = "none";
+    writingFeedbackSection.style.display = "block";
+
+    // Score badge
+    const score = result.overall_score || "okay";
+    const scoreLabels = { good: "Good", okay: "Okay", needs_work: "Needs Work" };
+    writingScoreBadge.textContent = scoreLabels[score] || score;
+    writingScoreBadge.className = `writing-score-badge ${score}`;
+
+    // Overall feedback
+    writingOverallFeedback.textContent = result.overall_feedback || "";
+
+    // Grammar usage
+    const gh = writingSetupData.grammar_hint;
+    if (gh && gh.rule_name) {
+      const used = result.grammar_used;
+      writingGrammarFeedbackEl.innerHTML =
+        `<span class="writing-grammar-used ${used ? "yes" : "no"}">${used ? "✓ Used" : "✗ Not used"}: ${escHtml(gh.rule_name)}</span>` +
+        (result.grammar_feedback ? `<div class="writing-grammar-feedback-text">${escHtml(result.grammar_feedback)}</div>` : "");
+      writingGrammarSection.style.display = "block";
+    } else {
+      writingGrammarSection.style.display = "none";
+    }
+
+    // Vocabulary used
+    const vocabUsed = result.vocabulary_used || [];
+    if (vocabUsed.length > 0) {
+      writingVocabUsed.innerHTML = vocabUsed
+        .map((w) => `<span class="writing-vocab-chip">${escHtml(w)}</span>`)
+        .join("");
+      writingVocabSection.style.display = "block";
+    } else {
+      writingVocabSection.style.display = "none";
+    }
+
+    // Errors
+    const errors = result.errors || [];
+    if (errors.length > 0) {
+      writingErrorsList.innerHTML = errors
+        .map(
+          (err) => `
+          <div class="writing-error-item">
+            <div class="writing-error-original">${escHtml(err.original)}</div>
+            <div class="writing-error-corrected">→ ${escHtml(err.corrected)}</div>
+            <div class="writing-error-explanation">${escHtml(err.explanation)}</div>
+          </div>`
+        )
+        .join("");
+      writingErrorsSection.style.display = "block";
+    } else {
+      writingErrorsSection.style.display = "none";
+    }
+
+    writingFeedbackSection.classList.add("fade-in");
+  }
+
+  writingDoneBtn.addEventListener("click", () => {
+    writingSetupData = null;
     loadingMsg.textContent = "Generating sentences...";
     showPracticeState(practiceIdle);
     loadWords();

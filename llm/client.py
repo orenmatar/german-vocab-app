@@ -13,8 +13,8 @@ import json
 
 
 # Default models — change these if you want a different model
-ANTHROPIC_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
+ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-5"
+OPENAI_DEFAULT_MODEL = "gpt-4o"
 
 
 def call_llm(system_prompt, user_prompt, model=None):

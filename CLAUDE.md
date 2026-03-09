@@ -48,6 +48,7 @@ Each word in `words.json` has:
 - `german_definition` — simple German definition
 - `english_translation`
 - `box` — Leitner box 1–5
+- `starred` — bool, user-marked important word; gets 2× weight boost in selection (default false; old words without this field treated as false)
 - `context_note` — optional user hint at add time
 
 ## Grammar Schema
@@ -71,8 +72,8 @@ Each entry in `grammar.json` has:
 - **Comprehension** (all boxes): Read LLM sentence, reveal translation + word card, self-rate got it / didn't.
 - **Multiple choice** (box 2+): Sentence with blank, pick correct word from 4 options.
 - **Fill-in-the-blank** (box 3+): Type the missing word. Umlaut-tolerant. "I was actually right" override.
-- **Sentence writing** (box 4+): Given a word (+ optional grammar challenge), write a German sentence. LLM grades it.
 - **Reading passage** (separate flow): LLM writes a 2–3 paragraph text using ~8 vocab words. Words are highlighted and clickable (shows word card popup). After reading, user rates each word knew/didn't.
+- **Writing passage** (separate flow): LLM picks a grammar hint + 10 word suggestions + generates a topic. User writes a paragraph, LLM grades it (score, grammar usage, vocab detected, corrections).
 
 ## Audio
 - Optional TTS audio in comprehension mode (listen before reading the sentence).
@@ -84,3 +85,7 @@ Each entry in `grammar.json` has:
 - No package managers or build steps
 - Selection formulas in `selection.py` are clearly commented for easy tweaking
 - LLM prompts live in text files, not hardcoded in Python
+
+## After each coding session
+- Always commit AND push changes to remote: `git add -A && git commit -m "..." && git push`
+- Update this file and the README file with any meaningful changes, if relevant
