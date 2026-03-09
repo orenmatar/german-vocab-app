@@ -160,7 +160,9 @@
   const writingErrorsSection = document.getElementById("writing-errors-section");
   const writingErrorsList = document.getElementById("writing-errors-list");
   const writingDoneBtn = document.getElementById("writing-done-btn");
+  const writingWordCardSlot = document.getElementById("writing-word-card-slot");
   const startWritingBtn = document.getElementById("start-writing-btn");
+  const contentEl = document.querySelector(".content");
   const activeBackBtn = document.getElementById("active-back-btn");
   const passageBackBtn = document.getElementById("passage-back-btn");
   const writingBackBtn = document.getElementById("writing-back-btn");
@@ -612,6 +614,7 @@
       (el) => (el.style.display = "none")
     );
     state.style.display = "flex";
+    contentEl.classList.toggle("content--wide", state === practiceWriting);
   }
 
   async function startPractice(fromSummary) {
@@ -1450,26 +1453,43 @@
       })
       .join("");
 
-    // Reset input area
+    // Reset input area and inline card slot
     writingInput.value = "";
     writingInput.disabled = false;
     writingSubmitBtn.disabled = false;
     writingLoadingEl.style.display = "none";
+    writingWordCardSlot.style.display = "none";
+    writingWordCardSlot.innerHTML = "";
+    activeChip = null;
 
     showPracticeState(practiceWriting);
     setTimeout(() => writingInput.focus(), 100);
   }
 
-  // Word chip click → show popup
+  // Word chip click → show inline card below the chip grid
+  let activeChip = null;
   writingWordsGrid.addEventListener("click", (e) => {
     const chip = e.target.closest(".writing-word-chip");
     if (!chip) return;
+
+    // Toggle: clicking the same chip again closes the card
+    if (chip === activeChip) {
+      writingWordCardSlot.style.display = "none";
+      writingWordCardSlot.innerHTML = "";
+      chip.classList.remove("active");
+      activeChip = null;
+      return;
+    }
 
     const wordKey = chip.dataset.word;
     const wordObj = (writingSetupData.suggested_words || []).find((w) => w.german === wordKey);
     if (!wordObj) return;
 
-    wordPopupContent.innerHTML = buildWordCard({
+    if (activeChip) activeChip.classList.remove("active");
+    chip.classList.add("active");
+    activeChip = chip;
+
+    writingWordCardSlot.innerHTML = buildWordCard({
       german: wordObj.german,
       article: wordObj.article,
       plural: wordObj.plural,
@@ -1478,16 +1498,7 @@
       german_definition: wordObj.german_definition,
       english_translation: wordObj.english_translation,
     });
-
-    const rect = chip.getBoundingClientRect();
-    wordPopup.style.display = "block";
-    const popupWidth = 280;
-    let left = rect.left + window.scrollX;
-    if (left + popupWidth > window.innerWidth - 16) {
-      left = window.innerWidth - popupWidth - 16;
-    }
-    wordPopup.style.left = Math.max(8, left) + "px";
-    wordPopup.style.top = (rect.bottom + window.scrollY + 8) + "px";
+    writingWordCardSlot.style.display = "block";
   });
 
   // Submit writing

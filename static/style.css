@@ -1478,9 +1478,16 @@ body {
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 36px;
-    max-width: 900px;
     width: 100%;
-    margin: 0 auto;
+}
+
+@media (max-width: 650px) {
+    .writing-layout {
+        grid-template-columns: 1fr;
+    }
+    .writing-sidebar {
+        position: static;
+    }
 }
 
 .writing-layout {
@@ -1542,8 +1549,12 @@ body {
     padding-bottom: 6px;
 }
 
+.practice-back-row--passage {
+    max-width: 680px;
+}
+
 .practice-back-row--wide {
-    max-width: 900px;
+    max-width: 100%;
 }
 
 .practice-back-btn {
@@ -1607,6 +1618,15 @@ body {
 .writing-word-chip:hover {
     background: var(--accent-light);
     border-color: var(--accent);
+}
+
+.writing-word-chip.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+}
+
+#writing-word-card-slot {
+    margin-top: 10px;
 }
 
 .writing-input-block {
