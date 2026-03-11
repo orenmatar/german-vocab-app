@@ -1410,7 +1410,7 @@
       });
 
       writingLoadingEl.style.display = "none";
-      showWritingFeedback(result);
+      showWritingFeedback(result, passage);
     } catch (e) {
       writingLoadingEl.style.display = "none";
       writingInput.disabled = false;
@@ -1419,7 +1419,7 @@
     }
   }
 
-  function showWritingFeedback(result) {
+  function showWritingFeedback(result, passage) {
     writingSetupSection.style.display = "none";
     writingFeedbackSection.style.display = "block";
 
@@ -1458,16 +1458,18 @@
     // Errors
     const errors = result.errors || [];
     if (errors.length > 0) {
-      writingErrorsList.innerHTML = errors
-        .map(
-          (err) => `
+      writingErrorsList.innerHTML =
+        `<div class="writing-your-passage">${escHtml(passage)}</div>` +
+        errors
+          .map(
+            (err) => `
           <div class="writing-error-item">
             <div class="writing-error-original">${escHtml(err.original)}</div>
             <div class="writing-error-corrected">→ ${escHtml(err.corrected)}</div>
             <div class="writing-error-explanation">${escHtml(err.explanation)}</div>
           </div>`
-        )
-        .join("");
+          )
+          .join("");
       writingErrorsSection.style.display = "block";
     } else {
       writingErrorsSection.style.display = "none";

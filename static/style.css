@@ -1748,6 +1748,19 @@ body {
     font-size: 0.85rem;
 }
 
+.writing-your-passage {
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+}
+
 .writing-error-item {
     margin-bottom: 12px;
     padding-bottom: 12px;
