@@ -108,7 +108,7 @@ def update_box(word, correct):
 # =============================================================================
 # MODE SELECTION
 #
-# Progression: comprehension → multiple choice → fill-in-the-blank
+# Progression: comprehension → multiple choice
 # =============================================================================
 
 def pick_mode(word):
@@ -116,23 +116,13 @@ def pick_mode(word):
     Decide the practice mode for a word based on its box level.
 
     - Box 1: always comprehension
-    - Box 2: mostly multiple choice, sometimes comprehension
-    - Box 3+: mix of fill-in-the-blank, multiple choice, and comprehension
+    - Box 2+: mostly multiple choice, sometimes comprehension
     """
     if word["box"] < settings.get("MULTIPLE_CHOICE_MIN_BOX"):
         return "comprehension"
 
-    if word["box"] < settings.get("FILL_IN_THE_BLANK_MIN_BOX"):
-        # Box 2: mostly multiple choice
-        if random.random() < settings.get("MULTIPLE_CHOICE_PROBABILITY"):
-            return "multiple_choice"
-        return "comprehension"
-
-    # Box 3+: mix of all modes
-    r = random.random()
-    if r < settings.get("FILL_IN_THE_BLANK_PROBABILITY"):
-        return "fill_in_the_blank"
-    if r < settings.get("FILL_IN_THE_BLANK_PROBABILITY") + 0.25:
+    # Box 2+: mostly multiple choice
+    if random.random() < settings.get("MULTIPLE_CHOICE_PROBABILITY"):
         return "multiple_choice"
     return "comprehension"
 

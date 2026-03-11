@@ -301,7 +301,7 @@ def practice_batch():
         # Validate blank_answer — if it's not a form of the target word,
         # the blank is wrong. Demote to comprehension mode.
         blank_answer = s.get("blank_answer", german)
-        if mode in ("fill_in_the_blank", "multiple_choice"):
+        if mode == "multiple_choice":
             if not _is_plausible_form(german, blank_answer):
                 mode = "comprehension"
 

@@ -123,19 +123,6 @@
   const mcNextBtn = document.getElementById("mc-next-btn");
 
   // Fill mode
-  const modeFill = document.getElementById("mode-fill");
-  const fillSentence = document.getElementById("fill-sentence");
-  const fillInput = document.getElementById("fill-input");
-  const fillSubmitBtn = document.getElementById("fill-submit-btn");
-  const fillFeedback = document.getElementById("fill-feedback");
-  const fillFeedbackText = document.getElementById("fill-feedback-text");
-  const fillTranslation = document.getElementById("fill-translation");
-  const fillWordCard = document.getElementById("fill-target-word");  // repurposed
-  const fillDefinition = document.getElementById("fill-definition"); // kept hidden
-  const fillGrammarNote = document.getElementById("fill-grammar-note");
-  const fillOverride = document.getElementById("fill-override");
-  const fillOverrideBtn = document.getElementById("fill-override-btn");
-  const fillNextBtn = document.getElementById("fill-next-btn");
 
   // Writing passage mode
   const practiceWriting = document.getElementById("practice-writing");
@@ -675,14 +662,11 @@
     // Reset all modes
     modeComp.style.display = "none";
     modeMC.style.display = "none";
-    modeFill.style.display = "none";
 
-    if (item.mode === "comprehension") {
-      showComprehension(item);
-    } else if (item.mode === "multiple_choice") {
+    if (item.mode === "multiple_choice") {
       showMultipleChoice(item);
     } else {
-      showFillInBlank(item);
+      showComprehension(item);
     }
   }
 
@@ -924,103 +908,6 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
   }
-
-  // --- Fill-in-the-blank mode ---
-
-  function showFillInBlank(item) {
-    modeFill.style.display = "block";
-
-    fillSentence.innerHTML = formatBlankSentence(item.blank_sentence);
-    fillInput.value = "";
-    fillInput.disabled = false;
-    fillSubmitBtn.disabled = false;
-    fillFeedback.style.display = "none";
-    fillFeedback.className = "fill-feedback";
-    fillTranslation.style.display = "none";
-    fillWordCard.style.display = "none";
-    fillDefinition.style.display = "none";
-    fillGrammarNote.style.display = "none";
-    fillOverride.style.display = "none";
-
-    setTimeout(() => fillInput.focus(), 50);
-  }
-
-  fillSubmitBtn.addEventListener("click", checkFillAnswer);
-  fillInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !currentAnswered) checkFillAnswer();
-  });
-
-  function showFillRevealDetails(item) {
-    fillTranslation.textContent = item.translation;
-    fillTranslation.style.display = "block";
-
-    const inSentence = item.blank_answer || item.word_in_sentence || item.german;
-    fillWordCard.className = "";
-    fillWordCard.innerHTML = buildWordCard({
-      german: item.german,
-      article: item.article,
-      plural: item.plural,
-      preteritum: item.preteritum,
-      partizip2: item.partizip2,
-      german_definition: item.german_definition,
-      english_translation: item.english_translation,
-      form_in_sentence: inSentence,
-    });
-    fillWordCard.style.display = "block";
-
-    if (item.grammar_note) {
-      fillGrammarNote.innerHTML = `<strong>Grammar:</strong> ${escHtml(item.grammar_note)}`;
-      fillGrammarNote.style.display = "block";
-    }
-  }
-
-  function checkFillAnswer() {
-    if (currentAnswered) return;
-    currentAnswered = true;
-
-    const item = batch[currentIndex];
-    const userAnswer = fillInput.value.trim();
-    const expected = item.blank_answer || item.german;
-    const correct = normalize(userAnswer) === normalize(expected);
-
-    fillInput.disabled = true;
-    fillSubmitBtn.disabled = true;
-    fillFeedback.style.display = "block";
-    fillFeedback.classList.add("fade-in");
-
-    showFillRevealDetails(item);
-
-    if (correct) {
-      fillFeedback.classList.add("correct");
-      fillFeedbackText.textContent = `Correct! The answer is "${expected}".`;
-      fillOverride.style.display = "none";
-      correctCount++;
-      recordResult(item.german, true, "fill_in_the_blank");
-    } else {
-      fillFeedback.classList.add("wrong");
-      fillFeedbackText.innerHTML = `The correct answer is "<strong>${escHtml(expected)}</strong>". You wrote "${escHtml(userAnswer)}".`;
-      fillOverride.style.display = "block";
-      recordResult(item.german, false, "fill_in_the_blank");
-    }
-  }
-
-  fillOverrideBtn.addEventListener("click", () => {
-    const item = batch[currentIndex];
-    fillFeedback.classList.remove("wrong");
-    fillFeedback.classList.add("correct");
-    const expected = item.blank_answer || item.german;
-    fillFeedbackText.textContent = `Counted as correct! The answer is "${expected}".`;
-    fillOverride.style.display = "none";
-    correctCount++;
-
-    // Re-record as correct
-    recordResult(item.german, true, "fill_in_the_blank");
-  });
-
-  fillNextBtn.addEventListener("click", () => {
-    if (!currentAnswered) return;
-    advanceToNext();
-  });
 
   // --- Shared practice helpers ---
 

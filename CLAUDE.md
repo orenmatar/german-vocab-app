@@ -88,4 +88,4 @@ Each entry in `grammar.json` has:
 
 ## After each coding session
 - Always commit AND push changes to remote: `git add -A && git commit -m "..." && git push`
-- Update this file and the README file with any meaningful changes, if relevant
+- Update CLAUDE.md file and the README.md file with any meaningful changes, if relevant
