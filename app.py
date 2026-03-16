@@ -26,6 +26,7 @@ app.permanent_session_lifetime = timedelta(days=30)
 
 DATA_FILE = Path(__file__).parent / "data" / "words.json"
 GRAMMAR_FILE = Path(__file__).parent / "data" / "grammar.json"
+MISTAKES_FILE = Path(__file__).parent / "data" / "mistakes.json"
 PROMPTS_DIR = Path(__file__).parent / "llm" / "prompts"
 
 # --- Auth ---
@@ -93,6 +94,20 @@ def save_grammar(gdata):
         json.dump(gdata, f, indent=2, ensure_ascii=False)
 
 
+def load_mistakes():
+    if not MISTAKES_FILE.exists():
+        MISTAKES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        save_mistakes({"mistake_patterns": []})
+    with open(MISTAKES_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_mistakes(mdata):
+    MISTAKES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(MISTAKES_FILE, "w", encoding="utf-8") as f:
+        json.dump(mdata, f, indent=2, ensure_ascii=False)
+
+
 def _normalize_de(s):
     """Normalize German text for comparison: lowercase, strip umlauts."""
     return s.lower().replace("ä", "a").replace("ö", "o").replace("ü", "u").replace("ß", "ss")
@@ -127,6 +142,7 @@ def _is_plausible_form(word, candidate):
 # Load data on startup
 data = load_data()
 grammar_data = load_grammar()
+mistakes_data = load_mistakes()
 
 
 # --- Page routes ---
@@ -387,6 +403,12 @@ def practice_passage():
     try:
         response_text = call_llm(system_prompt, user_prompt)
         result = parse_json_response(response_text)
+    except json.JSONDecodeError:
+        try:
+            response_text = call_llm(system_prompt, user_prompt)
+            result = parse_json_response(response_text)
+        except Exception as e:
+            return jsonify({"error": f"LLM call failed: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": f"LLM call failed: {str(e)}"}), 500
 
@@ -500,7 +522,82 @@ def practice_writing_judge():
     except Exception as e:
         return jsonify({"error": f"Judging failed: {str(e)}"}), 500
 
+    # Flag whether there are errors worth analyzing (frontend will call /writing-analyze)
+    result["has_errors"] = bool(result.get("errors"))
     return jsonify(result)
+
+
+@app.route("/api/practice/writing-analyze", methods=["POST"])
+def practice_writing_analyze():
+    """Analyze writing errors and update the persistent mistake patterns."""
+    body = request.get_json()
+    errors = body.get("errors", [])
+
+    if not errors:
+        return jsonify({"ok": True})
+
+    system_prompt = (PROMPTS_DIR / "analyze_mistakes.txt").read_text(encoding="utf-8")
+    existing = [
+        {"id": mp["id"], "category": mp["category"], "description": mp["description"]}
+        for mp in mistakes_data["mistake_patterns"]
+    ]
+    user_prompt = json.dumps({"errors": errors, "existing_patterns": existing}, ensure_ascii=False)
+
+    try:
+        response_text = call_llm(system_prompt, user_prompt)
+        analysis = parse_json_response(response_text)
+    except Exception as e:
+        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+
+    today = datetime.now().date().isoformat()
+
+    # Apply updates to existing patterns
+    pattern_map = {mp["id"]: mp for mp in mistakes_data["mistake_patterns"]}
+    for upd in analysis.get("updates", []):
+        mp = pattern_map.get(upd["id"])
+        if mp:
+            mp["count"] += 1
+            mp["last_seen"] = today
+            ex = upd.get("example", {})
+            if ex.get("mistake"):
+                mp["examples"].append({
+                    "mistake": ex["mistake"],
+                    "correction": ex["correction"],
+                    "date": today,
+                })
+                # Keep only the 5 most recent examples
+                mp["examples"] = mp["examples"][-5:]
+
+    # Add new patterns
+    existing_ids = [mp["id"] for mp in mistakes_data["mistake_patterns"]]
+    next_num = 1
+    while f"mp_{next_num}" in existing_ids:
+        next_num += 1
+
+    for np in analysis.get("new_patterns", []):
+        if not np.get("category"):
+            continue
+        ex = np.get("example", {})
+        mp = {
+            "id": f"mp_{next_num}",
+            "category": np["category"],
+            "description": np.get("description", ""),
+            "count": 1,
+            "first_seen": today,
+            "last_seen": today,
+            "examples": [],
+        }
+        if ex.get("mistake"):
+            mp["examples"].append({
+                "mistake": ex["mistake"],
+                "correction": ex["correction"],
+                "date": today,
+            })
+        mistakes_data["mistake_patterns"].append(mp)
+        next_num += 1
+
+    save_mistakes(mistakes_data)
+    return jsonify({"ok": True})
 
 
 # --- Grammar API ---
@@ -618,6 +715,52 @@ def delete_grammar(gp_id):
             save_grammar(grammar_data)
             return jsonify({"ok": True})
     return jsonify({"error": "Grammar point not found."}), 404
+
+
+# --- Mistakes / Insights API ---
+
+@app.route("/api/mistakes", methods=["GET"])
+def get_mistakes():
+    patterns = sorted(
+        mistakes_data["mistake_patterns"],
+        key=lambda x: (-x["count"], x["last_seen"]),
+    )
+    return jsonify(patterns)
+
+
+@app.route("/api/mistakes/<mp_id>", methods=["DELETE"])
+def delete_mistake(mp_id):
+    for mp in mistakes_data["mistake_patterns"]:
+        if mp["id"] == mp_id:
+            mistakes_data["mistake_patterns"].remove(mp)
+            save_mistakes(mistakes_data)
+            return jsonify({"ok": True})
+    return jsonify({"error": "Pattern not found."}), 404
+
+
+@app.route("/api/mistakes/<mp_id>/drill", methods=["POST"])
+def generate_mistake_drill(mp_id):
+    mp = next((m for m in mistakes_data["mistake_patterns"] if m["id"] == mp_id), None)
+    if not mp:
+        return jsonify({"error": "Pattern not found."}), 404
+
+    system_prompt = (PROMPTS_DIR / "generate_mistake_drill.txt").read_text(encoding="utf-8")
+    user_prompt = json.dumps(
+        {
+            "category": mp["category"],
+            "description": mp["description"],
+            "examples": mp.get("examples", [])[-3:],
+        },
+        ensure_ascii=False,
+    )
+
+    try:
+        response_text = call_llm(system_prompt, user_prompt)
+        exercises = parse_json_response(response_text)
+    except Exception as e:
+        return jsonify({"error": f"Drill generation failed: {str(e)}"}), 500
+
+    return jsonify({"exercises": exercises})
 
 
 # --- Audio API ---

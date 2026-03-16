@@ -27,12 +27,18 @@
   // Writing passage state
   let writingSetupData = null;
 
+  // Insights state
+  let mistakePatterns = [];
+
   // --- DOM refs ---
   const tabs = document.querySelectorAll(".nav-tab");
   const wordsView = document.getElementById("words-view");
   const grammarView = document.getElementById("grammar-view");
   const practiceView = document.getElementById("practice-view");
+  const insightsView = document.getElementById("insights-view");
   const settingsView = document.getElementById("settings-view");
+  const insightsListEl = document.getElementById("insights-list");
+  const insightsEmptyEl = document.getElementById("insights-empty");
   const settingsSections = document.getElementById("settings-sections");
 
   // Word list
@@ -171,12 +177,14 @@
       wordsView.classList.toggle("active", view === "words");
       grammarView.classList.toggle("active", view === "grammar");
       practiceView.classList.toggle("active", view === "practice");
+      insightsView.classList.toggle("active", view === "insights");
       settingsView.classList.toggle("active", view === "settings");
 
       contentEl.classList.toggle("content--wide", view === "grammar");
 
       if (view === "words") loadWords();
       if (view === "grammar") loadGrammar();
+      if (view === "insights") loadInsights();
       if (view === "settings") loadSettings();
     });
   });
@@ -642,6 +650,7 @@
     wordsView.classList.add("active");
     grammarView.classList.remove("active");
     practiceView.classList.remove("active");
+    insightsView.classList.remove("active");
     settingsView.classList.remove("active");
     loadWords();
   });
@@ -1411,6 +1420,11 @@
 
       writingLoadingEl.style.display = "none";
       showWritingFeedback(result, passage);
+
+      // Fire-and-forget: analyze errors and update mistake patterns
+      if (result.has_errors && result.errors && result.errors.length > 0) {
+        api("POST", "/api/practice/writing-analyze", { errors: result.errors }).catch(() => {});
+      }
     } catch (e) {
       writingLoadingEl.style.display = "none";
       writingInput.disabled = false;
@@ -1484,6 +1498,187 @@
     showPracticeState(practiceIdle);
     loadWords();
   });
+
+  // --- Insights ---
+
+  async function loadInsights() {
+    try {
+      mistakePatterns = await api("GET", "/api/mistakes");
+      renderInsights();
+    } catch (e) {
+      insightsListEl.innerHTML = `<p class="insights-load-error">Failed to load insights.</p>`;
+    }
+  }
+
+  function renderInsights() {
+    if (!mistakePatterns || mistakePatterns.length === 0) {
+      insightsEmptyEl.style.display = "block";
+      insightsListEl.innerHTML = "";
+      return;
+    }
+    insightsEmptyEl.style.display = "none";
+    insightsListEl.innerHTML = mistakePatterns.map(renderMistakeCard).join("");
+
+    // Attach event listeners
+    insightsListEl.querySelectorAll(".mistake-delete-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        if (!confirm("Remove this mistake pattern?")) return;
+        try {
+          await api("DELETE", `/api/mistakes/${id}`);
+          mistakePatterns = mistakePatterns.filter((mp) => mp.id !== id);
+          renderInsights();
+        } catch (e) {
+          alert("Failed to delete: " + e.message);
+        }
+      });
+    });
+
+    insightsListEl.querySelectorAll(".mistake-practice-btn").forEach((btn) => {
+      btn.addEventListener("click", () => startMistakeDrill(btn.dataset.id));
+    });
+  }
+
+  function renderMistakeCard(mp) {
+    const lastSeenDate = mp.last_seen ? new Date(mp.last_seen) : null;
+    const today = new Date();
+    const daysSince = lastSeenDate
+      ? Math.floor((today - lastSeenDate) / (1000 * 60 * 60 * 24))
+      : null;
+    const isFaded = daysSince !== null && daysSince >= 30;
+    const lastSeenText = daysSince === null
+      ? ""
+      : daysSince === 0
+      ? "last seen today"
+      : daysSince === 1
+      ? "last seen yesterday"
+      : `last seen ${daysSince} days ago`;
+
+    const examplesHtml = (mp.examples || []).slice(-3).reverse().map((ex) => `
+      <div class="mistake-example">
+        <span class="mistake-example-wrong">${escHtml(ex.mistake)}</span>
+        <span class="mistake-example-arrow">→</span>
+        <span class="mistake-example-right">${escHtml(ex.correction)}</span>
+      </div>`).join("");
+
+    return `
+      <div class="mistake-card ${isFaded ? "mistake-card--faded" : ""}">
+        <div class="mistake-card-header">
+          <div class="mistake-card-title-row">
+            <span class="mistake-category">${escHtml(mp.category)}</span>
+            <span class="mistake-count-badge">${mp.count}×</span>
+          </div>
+          <div class="mistake-card-meta">
+            ${lastSeenText ? `<span class="mistake-last-seen ${isFaded ? "mistake-last-seen--old" : ""}">${lastSeenText}</span>` : ""}
+          </div>
+        </div>
+        <div class="mistake-description">${escHtml(mp.description)}</div>
+        ${examplesHtml ? `<div class="mistake-examples">${examplesHtml}</div>` : ""}
+        <div class="mistake-card-actions">
+          <button class="btn btn-secondary btn-small mistake-practice-btn" data-id="${mp.id}">Practice this</button>
+          <button class="btn btn-ghost btn-small mistake-delete-btn" data-id="${mp.id}">Delete</button>
+        </div>
+        <div class="mistake-drill-section" id="drill-${mp.id}" style="display:none;"></div>
+      </div>`;
+  }
+
+  async function startMistakeDrill(id) {
+    const drillSection = document.getElementById(`drill-${id}`);
+    const practiceBtn = insightsListEl.querySelector(`.mistake-practice-btn[data-id="${id}"]`);
+    if (!drillSection) return;
+
+    drillSection.style.display = "block";
+    drillSection.innerHTML = `<div class="mistake-drill-loading"><div class="spinner-small"></div><span>Generating exercises...</span></div>`;
+    if (practiceBtn) practiceBtn.disabled = true;
+
+    try {
+      const result = await api("POST", `/api/mistakes/${id}/drill`);
+      const exercises = result.exercises || [];
+      renderMistakeDrill(drillSection, exercises, id, practiceBtn);
+    } catch (e) {
+      drillSection.innerHTML = `<p class="drill-error">Failed to generate exercises: ${escHtml(e.message)}</p>`;
+      if (practiceBtn) practiceBtn.disabled = false;
+    }
+  }
+
+  function renderMistakeDrill(container, exercises, id, practiceBtn) {
+    if (!exercises.length) {
+      container.innerHTML = `<p class="drill-error">No exercises generated.</p>`;
+      if (practiceBtn) practiceBtn.disabled = false;
+      return;
+    }
+
+    const exercisesHtml = exercises.map((ex, i) => {
+      const parts = ex.sentence.split("___");
+      return `
+        <div class="drill-exercise" id="drill-ex-${id}-${i}">
+          <div class="drill-sentence">
+            ${escHtml(parts[0])}<input type="text" class="drill-input" data-index="${i}" data-answer="${escHtml(ex.answer)}" placeholder="${escHtml(ex.hint)}" autocomplete="off">${escHtml(parts[1] || "")}
+          </div>
+          <div class="drill-feedback" id="drill-fb-${id}-${i}" style="display:none;"></div>
+        </div>`;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="mistake-drill">
+        <div class="drill-title">Fill in the blank:</div>
+        <div class="drill-exercises">${exercisesHtml}</div>
+        <div class="drill-actions">
+          <button class="btn btn-primary drill-check-btn">Check Answers</button>
+          <button class="btn btn-ghost drill-close-btn">Close</button>
+        </div>
+        <div class="drill-results" id="drill-results-${id}" style="display:none;"></div>
+      </div>`;
+
+    container.querySelector(".drill-check-btn").addEventListener("click", () => {
+      checkDrillAnswers(container, exercises, id);
+    });
+    container.querySelector(".drill-close-btn").addEventListener("click", () => {
+      container.style.display = "none";
+      container.innerHTML = "";
+      if (practiceBtn) practiceBtn.disabled = false;
+    });
+
+    // Allow Enter key on last input to submit
+    const inputs = container.querySelectorAll(".drill-input");
+    inputs.forEach((inp) => {
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") container.querySelector(".drill-check-btn").click();
+      });
+    });
+  }
+
+  function checkDrillAnswers(container, exercises, id) {
+    const inputs = container.querySelectorAll(".drill-input");
+    let correct = 0;
+
+    inputs.forEach((inp, i) => {
+      const userAnswer = inp.value.trim().toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss");
+      const correctAnswer = (inp.dataset.answer || "").toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss");
+      const isCorrect = userAnswer === correctAnswer;
+      if (isCorrect) correct++;
+
+      const fb = document.getElementById(`drill-fb-${id}-${i}`);
+      const ex = exercises[i];
+      inp.disabled = true;
+      inp.classList.add(isCorrect ? "drill-input--correct" : "drill-input--wrong");
+
+      if (fb) {
+        fb.style.display = "block";
+        fb.innerHTML = isCorrect
+          ? `<span class="drill-correct-label">Correct!</span>`
+          : `<span class="drill-wrong-label">Answer: <strong>${escHtml(ex.answer)}</strong></span><span class="drill-explanation"> — ${escHtml(ex.explanation)}</span>`;
+      }
+    });
+
+    const resultsEl = document.getElementById(`drill-results-${id}`);
+    if (resultsEl) {
+      resultsEl.style.display = "block";
+      resultsEl.innerHTML = `<div class="drill-score">${correct} / ${exercises.length} correct</div>`;
+    }
+
+    container.querySelector(".drill-check-btn").style.display = "none";
+  }
 
   // --- Init ---
 

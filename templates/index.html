@@ -18,6 +18,7 @@
                     <button class="nav-tab active" data-view="words">My Words</button>
                     <button class="nav-tab" data-view="grammar">Grammar</button>
                     <button class="nav-tab" data-view="practice">Practice</button>
+                    <button class="nav-tab" data-view="insights">Insights</button>
                     <button class="nav-tab" data-view="settings">Settings</button>
                 </div>
             </div>
@@ -324,6 +325,20 @@
                     </div>
                 </div>
             </div>
+            <!-- Insights View -->
+            <div id="insights-view" class="view">
+                <div class="insights-header">
+                    <h2>Writing Insights</h2>
+                    <p>Patterns in your writing mistakes, tracked over time. Click "Practice" on any to get targeted exercises.</p>
+                </div>
+                <div id="insights-empty" class="insights-empty" style="display:none;">
+                    <p>No mistake patterns recorded yet. Complete some Writing Passage sessions to see patterns here.</p>
+                </div>
+                <div id="insights-list" class="insights-list">
+                    <!-- Mistake pattern cards rendered here -->
+                </div>
+            </div>
+
             <!-- Settings View -->
             <div id="settings-view" class="view">
                 <div class="settings-header">
