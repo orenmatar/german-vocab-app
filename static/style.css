@@ -1432,6 +1432,48 @@ body {
     color: white;
 }
 
+/* Star/delete actions inside sentence practice reveal */
+.practice-word-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.practice-word-actions .btn-star,
+.practice-word-actions .btn-delete {
+    font-size: 0.9rem;
+    padding: 3px 7px;
+}
+
+.practice-word-deleted {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Star/delete actions in passage review cards */
+.passage-btns-sep {
+    color: var(--border);
+    margin: 0 4px;
+    user-select: none;
+}
+
+.passage-review-card.pr-deleted {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.passage-review-card.pr-deleted::after {
+    content: "deleted";
+    font-size: 0.75rem;
+    color: var(--text-light);
+    font-style: italic;
+    margin-left: 8px;
+}
+
 .passage-finish-area {
     text-align: center;
     padding-top: 8px;

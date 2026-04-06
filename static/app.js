@@ -27,6 +27,11 @@
   // Writing passage state
   let writingSetupData = null;
 
+  // Words deleted/starred mid-session (sentence practice)
+  let deletedDuringSession = new Set();
+  // Words deleted on passage review screen
+  let passageDeletedWords = new Set();
+
   // Insights state
   let mistakePatterns = [];
 
@@ -127,6 +132,10 @@
   const mcDefinition = document.getElementById("mc-definition"); // kept hidden
   const mcGrammarNote = document.getElementById("mc-grammar-note");
   const mcNextBtn = document.getElementById("mc-next-btn");
+
+  // In-practice word action areas
+  const compWordActions = document.getElementById("comp-word-actions");
+  const mcWordActions = document.getElementById("mc-word-actions");
 
   // Fill mode
 
@@ -246,6 +255,17 @@
       : "";
 
     return `<div class="word-card">${headerHtml}${supsHtml}${defHtml}${transHtml}</div>`;
+  }
+
+  // Builds star + delete mini-buttons for use inside practice sessions
+  function buildPracticeActions(german, opts = {}) {
+    const { starFn = "practiceToggleStar", deleteFn = "practiceDeleteWord" } = opts;
+    const word = words.find((w) => w.german === german);
+    const starred = word ? !!word.starred : false;
+    const starClass = starred ? "btn-star starred" : "btn-star";
+    const starTitle = starred ? "Unstar this word" : "Star this word";
+    return `<button class="${starClass}" onclick="${starFn}('${escAttr(german)}')" title="${starTitle}">&#9733;</button>`
+      + `<button class="btn-delete" onclick="${deleteFn}('${escAttr(german)}')" title="Delete word">&#x2715;</button>`;
   }
 
   // Global delegated click for "Show translation" inside any word card
@@ -446,6 +466,42 @@
     }
   };
 
+  // Called from star/delete buttons inside sentence practice reveals
+  window.practiceToggleStar = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newStarred = !word.starred;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { starred: newStarred });
+      word.starred = newStarred;
+      // Re-render both action areas (only one is visible at a time)
+      [compWordActions, mcWordActions].forEach((el) => {
+        if (el && el.style.display !== "none") {
+          el.innerHTML = buildPracticeActions(german);
+        }
+      });
+    } catch (e) {
+      alert("Failed to update star: " + e.message);
+    }
+  };
+
+  window.practiceDeleteWord = async function (german) {
+    if (!confirm(`Delete "${german}" from your word list?`)) return;
+    try {
+      await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
+      words = words.filter((w) => w.german !== german);
+      deletedDuringSession.add(german);
+      // Replace action area with a subtle "deleted" note
+      [compWordActions, mcWordActions].forEach((el) => {
+        if (el && el.style.display !== "none") {
+          el.innerHTML = '<span class="practice-word-deleted">Word deleted</span>';
+        }
+      });
+    } catch (e) {
+      alert("Failed to delete: " + e.message);
+    }
+  };
+
   sortSelect.addEventListener("change", renderWords);
 
   starFilterBtn.addEventListener("click", () => {
@@ -620,6 +676,7 @@
       batch = data.batch;
       currentIndex = 0;
       correctCount = 0;
+      deletedDuringSession = new Set();
 
       if (batch.length === 0) {
         throw new Error("No words to practice. Add some words first!");
@@ -671,6 +728,8 @@
     // Reset all modes
     modeComp.style.display = "none";
     modeMC.style.display = "none";
+    compWordActions.style.display = "none";
+    mcWordActions.style.display = "none";
 
     if (item.mode === "multiple_choice") {
       showMultipleChoice(item);
@@ -802,6 +861,10 @@
     showTranslationBtn.style.display = "none";
     compButtons.style.display = "flex";
     compButtons.classList.add("fade-in");
+
+    // Show star/delete actions for this word
+    compWordActions.innerHTML = buildPracticeActions(item.german);
+    compWordActions.style.display = "flex";
   });
 
   compButtons.addEventListener("click", (e) => {
@@ -897,6 +960,10 @@
       mcGrammarNote.style.display = "block";
     }
 
+    // Show star/delete actions for this word
+    mcWordActions.innerHTML = buildPracticeActions(item.german);
+    mcWordActions.style.display = "flex";
+
     recordResult(item.german, correct, "multiple_choice");
   });
 
@@ -953,6 +1020,10 @@
 
   function advanceToNext() {
     currentIndex++;
+    // Skip any words that were deleted during this session
+    while (currentIndex < batch.length && deletedDuringSession.has(batch[currentIndex].german)) {
+      currentIndex++;
+    }
     if (currentIndex >= batch.length) {
       showSummary();
     } else {
@@ -1242,6 +1313,7 @@
     hideWordPopup();
     passageReadingSection.style.display = "none";
     passageReviewSection.style.display = "block";
+    passageDeletedWords = new Set();
 
     const wordsUsed = passageData.words_used || [];
     passageWordListEl.innerHTML = wordsUsed
@@ -1261,6 +1333,8 @@
             <div class="passage-card-btns">
               <button class="btn btn-knew" data-word="${escAttr(wu.word)}" data-correct="true">&#10003; Knew it</button>
               <button class="btn btn-didnt" data-word="${escAttr(wu.word)}" data-correct="false">&#10007; Didn't know</button>
+              <span class="passage-btns-sep">|</span>
+              ${buildPracticeActions(wu.word, { starFn: "passageReviewToggleStar", deleteFn: "passageReviewDeleteWord" })}
             </div>
           </div>`)
       .join("");
@@ -1282,10 +1356,45 @@
     }
   });
 
+  window.passageReviewToggleStar = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newStarred = !word.starred;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { starred: newStarred });
+      word.starred = newStarred;
+      // Update the star button(s) in the review cards for this word
+      const card = document.getElementById(`prcard-${escAttr(german)}`);
+      if (card) {
+        const starBtn = card.querySelector(".btn-star");
+        if (starBtn) {
+          starBtn.className = newStarred ? "btn-star starred" : "btn-star";
+          starBtn.title = newStarred ? "Unstar this word" : "Star this word";
+        }
+      }
+    } catch (e) {
+      alert("Failed to update star: " + e.message);
+    }
+  };
+
+  window.passageReviewDeleteWord = async function (german) {
+    if (!confirm(`Delete "${german}" from your word list?`)) return;
+    try {
+      await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
+      words = words.filter((w) => w.german !== german);
+      passageDeletedWords.add(german);
+      const card = document.getElementById(`prcard-${escAttr(german)}`);
+      if (card) card.classList.add("pr-deleted");
+    } catch (e) {
+      alert("Failed to delete: " + e.message);
+    }
+  };
+
   passageFinishBtn.addEventListener("click", async () => {
-    // Record results for all rated words
+    // Record results for all rated words (skip deleted ones)
     const wordsUsed = passageData.words_used || [];
     for (const wu of wordsUsed) {
+      if (passageDeletedWords.has(wu.word)) continue;
       const correct = passageRatings.hasOwnProperty(wu.word) ? passageRatings[wu.word] : false;
       await recordResult(wu.word, correct, "reading_passage");
     }
