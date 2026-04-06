@@ -131,6 +131,7 @@
   const mcWordCard = document.getElementById("mc-target-word");  // repurposed
   const mcDefinition = document.getElementById("mc-definition"); // kept hidden
   const mcGrammarNote = document.getElementById("mc-grammar-note");
+  const mcWrongWord = document.getElementById("mc-wrong-word");
   const mcNextBtn = document.getElementById("mc-next-btn");
 
   // In-practice word action areas
@@ -898,6 +899,7 @@
 
     mcFeedback.style.display = "none";
     mcFeedback.className = "fill-feedback";
+    mcWrongWord.style.display = "none";
     mcTranslation.style.display = "none";
     mcWordCard.style.display = "none";
     mcDefinition.style.display = "none";
@@ -933,12 +935,29 @@
       correctCount++;
       mcFeedback.classList.add("correct");
       mcFeedbackText.innerHTML = `Correct! The word is "${escHtml(item.german)}"${escHtml(showForm)}.`;
+      mcWrongWord.style.display = "none";
     } else {
       mcFeedback.classList.add("wrong");
       mcFeedbackText.innerHTML = `The correct answer is "<strong>${escHtml(item.german)}</strong>"${escHtml(showForm)}.`;
+
+      // Show word card for the wrong word so user can learn what it actually means
+      const pickedWord = words.find((w) => w.german === picked);
+      if (pickedWord) {
+        mcWrongWord.innerHTML = `<div class="mc-wrong-label">You picked:</div>`
+          + buildWordCard({
+            german: pickedWord.german,
+            article: pickedWord.article,
+            plural: pickedWord.plural,
+            preteritum: pickedWord.preteritum,
+            partizip2: pickedWord.partizip2,
+            german_definition: pickedWord.german_definition,
+            english_translation: pickedWord.english_translation,
+          });
+        mcWrongWord.style.display = "block";
+      }
     }
 
-    // Show reveal details
+    // Show reveal details for the correct word
     mcTranslation.textContent = item.translation;
     mcTranslation.style.display = "block";
 

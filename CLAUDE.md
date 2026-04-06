@@ -75,7 +75,7 @@ Each entry in `grammar.json` has:
 
 ## Practice Modes (batch of 10 words)
 - **Comprehension** (all boxes): Read LLM sentence, reveal translation + word card, self-rate got it / didn't.
-- **Multiple choice** (box 2+): Sentence with blank, pick correct word from 4 options.
+- **Multiple choice** (box 2+): Sentence with blank, pick correct word from 4 options. On a wrong answer, shows a word card for the picked word (so user can learn what it actually means) before showing the correct word's card.
 - **Reading passage** (separate flow): LLM writes a 2–3 paragraph text using ~8 vocab words. Words are highlighted and clickable (shows word card popup). After reading, user rates each word knew/didn't.
 - **Writing passage** (separate flow): LLM picks a grammar hint + 10 word suggestions + generates a topic. User writes a paragraph, LLM grades it (score, grammar usage, vocab detected, corrections).
 
