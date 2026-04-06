@@ -21,12 +21,16 @@ selection.py            # Word selection logic — weighted random formula (easy
 llm/
   client.py             # Provider-agnostic LLM wrapper (Anthropic/OpenAI)
   prompts/
-    validate_word.txt        # Validates/corrects new words; returns article, plural, preteritum, partizip2
-    generate_sentences.txt   # Generates a batch of 10 practice sentences
-    judge_sentence.txt       # Grades user's sentence-writing attempt; optionally checks grammar rule
-    generate_passage.txt     # Generates a reading passage using ~8 vocab words
-    validate_grammar.txt     # Enriches messy grammar notes into structured rule_name/explanation/examples
-    judge_translation.txt    # Reserved for future use
+    validate_word.txt           # Validates/corrects new words; returns article, plural, preteritum, partizip2
+    generate_sentences.txt      # Generates a batch of 10 practice sentences
+    generate_passage.txt        # Generates a reading passage using ~8 vocab words
+    validate_grammar.txt        # Enriches messy grammar notes into structured rule_name/explanation/examples
+    generate_writing_topic.txt  # Generates a writing topic from a grammar hint + suggested words
+    judge_writing_passage.txt   # Grades user's paragraph (score, grammar usage, vocab, corrections)
+    analyze_mistakes.txt        # Groups writing errors into recurring patterns; updates pattern list
+    generate_mistake_drill.txt  # Generates targeted fill-in-the-blank drill for a specific mistake pattern
+    judge_sentence.txt          # Legacy — graded sentence writing (mode removed); kept for reference
+    judge_translation.txt       # Reserved for future use
 data/
   words.json            # Word list + Leitner box progress
   grammar.json          # Grammar hints + enriched rule data
@@ -63,17 +67,25 @@ Each entry in `grammar.json` has:
 - **Words are keyed by their German text** — no separate IDs. `german` field is the unique key everywhere.
 - **Leitner box system** (boxes 1–5) drives word selection weighting and mode selection.
 - **LLM is called once per batch** (10 words), not per word. Prompts are read from files at runtime.
-- **Umlaut-insensitive comparison** for fill-in-the-blank: ä→a, ö→o, ü→u, ß→ss, then lowercase.
 - **JSON is saved after every action** (add/delete/practice result). No caching concerns — it's local.
 - **Word card component** (`buildWordCard()` in app.js) — reusable HTML snippet showing article, word, plural, Prät., Partizip II, German definition, and translation-on-click. Used in all practice reveal areas.
+- **Practice actions component** (`buildPracticeActions()` in app.js) — renders ★ star and ✕ delete mini-buttons for use inside practice sessions. Supports custom onclick function names via `opts.starFn` / `opts.deleteFn` so the same helper works in both sentence practice and passage review.
+- **In-session deletion safety** — words deleted during sentence practice are added to `deletedDuringSession` (a Set). `advanceToNext()` skips any upcoming batch items for deleted words. Words deleted on the passage review screen are tracked in `passageDeletedWords` and skipped when recording results on Finish.
 - **Grammar enrichment** — when user adds/edits a grammar note, it passes through `validate_grammar.txt` LLM to produce structured data. `enrich-all` endpoint handles legacy notes.
 
 ## Practice Modes (batch of 10 words)
 - **Comprehension** (all boxes): Read LLM sentence, reveal translation + word card, self-rate got it / didn't.
 - **Multiple choice** (box 2+): Sentence with blank, pick correct word from 4 options.
-- **Fill-in-the-blank** (box 3+): Type the missing word. Umlaut-tolerant. "I was actually right" override.
 - **Reading passage** (separate flow): LLM writes a 2–3 paragraph text using ~8 vocab words. Words are highlighted and clickable (shows word card popup). After reading, user rates each word knew/didn't.
 - **Writing passage** (separate flow): LLM picks a grammar hint + 10 word suggestions + generates a topic. User writes a paragraph, LLM grades it (score, grammar usage, vocab detected, corrections).
+
+## In-Practice Word Management
+After the word reveal in sentence practice (comprehension + MC), and on the passage review screen, each word card shows ★ and ✕ buttons so the user can star or delete a word without leaving the session.
+- **Star**: immediate PATCH to backend, updates `words` array and button state in place.
+- **Delete**: confirm dialog → DELETE to backend → word removed from `words` array → session continues safely (deleted words skipped going forward).
+
+## Insights Tab
+Tracks recurring writing mistake patterns over time. After each Writing Passage session, corrections are passed through `analyze_mistakes.txt` to cluster them into named patterns (e.g. "Wrong case after preposition"). Patterns are stored in `data/insights.json`. From the Insights tab, users can click "Practice" on any pattern to run a targeted fill-in-the-blank drill generated by `generate_mistake_drill.txt`.
 
 ## Audio
 - Optional TTS audio in comprehension mode (listen before reading the sentence).
