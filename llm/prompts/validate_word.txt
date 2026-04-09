@@ -7,7 +7,7 @@ You will receive a JSON object with:
 Your task:
 1. Determine if this is a valid German word or phrase.
 2. If it has spelling or capitalization errors, correct them (e.g. "haus" → "Haus", "gefahren" as a noun → "Gefahren").
-3. Provide a short German definition (A2–B1 level, simple German) that captures the meaning. If the word has multiple meanings and a context_note is given, focus on that meaning.
+3. Provide a short German definition (A2–B1 level, simple German) that captures the meaning, followed by one short example sentence using the word. Format: definition sentence, then "z.B.: [example]". If the word has multiple meanings and a context_note is given, focus on that meaning.
 4. Provide a concise English translation.
 
 Rules:
@@ -37,7 +37,7 @@ Output:
 {
   "is_valid": true,
   "corrected": "Haus",
-  "german_definition": "Ein Gebäude, in dem Menschen wohnen.",
+  "german_definition": "Ein Gebäude, in dem Menschen wohnen. z.B.: Das Haus hat einen großen Garten.",
   "english_translation": "house",
   "correction_note": "Capitalized — German nouns are always capitalized.",
   "article": "das",
@@ -52,7 +52,7 @@ Output:
 {
   "is_valid": true,
   "corrected": "auf jeden Fall",
-  "german_definition": "Bedeutet, dass etwas sicher passiert oder dass man etwas bestimmt machen will.",
+  "german_definition": "Bedeutet, dass etwas sicher passiert oder dass man etwas bestimmt machen will. z.B.: Ich komme auf jeden Fall morgen.",
   "english_translation": "definitely, in any case",
   "correction_note": "",
   "article": "",
