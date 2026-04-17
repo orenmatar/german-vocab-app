@@ -355,6 +355,18 @@
         </main>
     </div>
 
+    <!-- Custom modal (replaces native alert/confirm blocked by some browsers) -->
+    <div id="custom-modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-box">
+            <p id="modal-message" class="modal-message"></p>
+            <div class="modal-btns">
+                <button id="modal-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="modal-ok" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/app.js"></script>
 </body>
 </html>

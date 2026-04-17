@@ -174,6 +174,36 @@
   const nextBatchBtn = document.getElementById("next-batch-btn");
   const doneBtn = document.getElementById("done-btn");
 
+  // --- Custom modal (replaces native alert/confirm, which Arc and some browsers block) ---
+
+  const customModal = document.getElementById("custom-modal");
+  const modalMessage = document.getElementById("modal-message");
+  const modalOk = document.getElementById("modal-ok");
+  const modalCancel = document.getElementById("modal-cancel");
+
+  function showAlert(msg) {
+    return new Promise((resolve) => {
+      modalMessage.textContent = msg;
+      modalCancel.style.display = "none";
+      modalOk.textContent = "OK";
+      customModal.style.display = "flex";
+      modalOk.addEventListener("click", () => { customModal.style.display = "none"; resolve(); }, { once: true });
+    });
+  }
+
+  function showConfirm(msg, okText = "OK", cancelText = "Cancel") {
+    return new Promise((resolve) => {
+      modalMessage.textContent = msg;
+      modalCancel.style.display = "";
+      modalOk.textContent = okText;
+      modalCancel.textContent = cancelText;
+      customModal.style.display = "flex";
+      const done = (result) => { customModal.style.display = "none"; resolve(result); };
+      modalOk.addEventListener("click", () => done(true), { once: true });
+      modalCancel.addEventListener("click", () => done(false), { once: true });
+    });
+  }
+
   // --- Navigation ---
 
   const contentEl = document.querySelector(".content");
@@ -401,15 +431,16 @@
       addWordBtn.classList.remove("btn-loading");
 
       if (!validation.is_valid) {
-        alert(`"${german}" doesn't appear to be a valid German word or phrase.`);
+        await showAlert(`"${german}" doesn't appear to be a valid German word or phrase.`);
         addWordBtn.disabled = false;
         return;
       }
 
       let finalWord = validation.corrected || german;
       if (finalWord !== german) {
-        const accept = confirm(
-          `Did you mean "${finalWord}"?\n\n${validation.correction_note || "Spelling/capitalization was corrected."}`
+        const accept = await showConfirm(
+          `Did you mean "${finalWord}"?\n\n${validation.correction_note || "Spelling/capitalization was corrected."}`,
+          "Yes, use this", "No, cancel"
         );
         if (!accept) {
           addWordBtn.disabled = false;
@@ -435,7 +466,7 @@
       newWordInput.focus();
     } catch (e) {
       addWordBtn.classList.remove("btn-loading");
-      alert(e.message);
+      await showAlert(e.message);
     } finally {
       addWordBtn.disabled = false;
       isAddingWord = false;
@@ -443,14 +474,14 @@
   }
 
   window.deleteWord = async function (german) {
-    if (!confirm(`Delete "${german}"?`)) return;
+    if (!await showConfirm(`Delete "${german}"?`, "Delete", "Cancel")) return;
 
     try {
       await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
       words = words.filter((w) => w.german !== german);
       renderWords();
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message);
     }
   };
 
@@ -463,7 +494,7 @@
       word.starred = newStarred;
       renderWords();
     } catch (e) {
-      alert("Failed to update star: " + e.message);
+      await showAlert("Failed to update star: " + e.message);
     }
   };
 
@@ -482,12 +513,12 @@
         }
       });
     } catch (e) {
-      alert("Failed to update star: " + e.message);
+      await showAlert("Failed to update star: " + e.message);
     }
   };
 
   window.practiceDeleteWord = async function (german) {
-    if (!confirm(`Delete "${german}" from your word list?`)) return;
+    if (!await showConfirm(`Delete "${german}" from your word list?`, "Delete", "Cancel")) return;
     try {
       await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
       words = words.filter((w) => w.german !== german);
@@ -499,7 +530,7 @@
         }
       });
     } catch (e) {
-      alert("Failed to delete: " + e.message);
+      await showAlert("Failed to delete: " + e.message);
     }
   };
 
@@ -598,7 +629,7 @@
       newGrammarInput.value = "";
       newGrammarInput.focus();
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message);
     } finally {
       addGrammarBtn.disabled = false;
       addGrammarBtn.classList.remove("btn-loading");
@@ -606,14 +637,14 @@
   }
 
   window.deleteGrammar = async function (id) {
-    if (!confirm("Delete this grammar point?")) return;
+    if (!await showConfirm("Delete this grammar point?", "Delete", "Cancel")) return;
 
     try {
       await api("DELETE", `/api/grammar/${encodeURIComponent(id)}`);
       grammarPoints = grammarPoints.filter((gp) => gp.id !== id);
       renderGrammar();
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message);
     }
   };
 
@@ -624,7 +655,7 @@
       if (idx !== -1) grammarPoints[idx] = updated;
       renderGrammar();
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message);
       renderGrammar(); // revert checkbox visually
     }
   };
@@ -652,7 +683,7 @@
       if (idx !== -1) grammarPoints[idx] = updated;
       renderGrammar();
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message);
       saveBtn.disabled = false;
       saveBtn.classList.remove("btn-loading");
     }
@@ -1148,27 +1179,27 @@
 
   // --- Back buttons ---
 
-  function confirmBack() {
-    return confirm("Go back to the practice menu? Your current progress will be lost.");
+  async function confirmBack() {
+    return await showConfirm("Go back to the practice menu? Your current progress will be lost.", "Go back", "Stay");
   }
 
-  activeBackBtn.addEventListener("click", () => {
-    if (!confirmBack()) return;
+  activeBackBtn.addEventListener("click", async () => {
+    if (!await confirmBack()) return;
     batch = [];
     currentIndex = 0;
     correctCount = 0;
     showPracticeState(practiceIdle);
   });
 
-  passageBackBtn.addEventListener("click", () => {
-    if (!confirmBack()) return;
+  passageBackBtn.addEventListener("click", async () => {
+    if (!await confirmBack()) return;
     passageData = null;
     passageRatings = {};
     showPracticeState(practiceIdle);
   });
 
-  writingBackBtn.addEventListener("click", () => {
-    if (!confirmBack()) return;
+  writingBackBtn.addEventListener("click", async () => {
+    if (!await confirmBack()) return;
     writingSetupData = null;
     showPracticeState(practiceIdle);
   });
@@ -1392,12 +1423,12 @@
         }
       }
     } catch (e) {
-      alert("Failed to update star: " + e.message);
+      await showAlert("Failed to update star: " + e.message);
     }
   };
 
   window.passageReviewDeleteWord = async function (german) {
-    if (!confirm(`Delete "${german}" from your word list?`)) return;
+    if (!await showConfirm(`Delete "${german}" from your word list?`, "Delete", "Cancel")) return;
     try {
       await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
       words = words.filter((w) => w.german !== german);
@@ -1405,7 +1436,7 @@
       const card = document.getElementById(`prcard-${escAttr(german)}`);
       if (card) card.classList.add("pr-deleted");
     } catch (e) {
-      alert("Failed to delete: " + e.message);
+      await showAlert("Failed to delete: " + e.message);
     }
   };
 
@@ -1557,7 +1588,7 @@
       writingLoadingEl.style.display = "none";
       writingInput.disabled = false;
       writingSubmitBtn.disabled = false;
-      alert("Failed to check your writing: " + e.message);
+      await showAlert("Failed to check your writing: " + e.message);
     }
   }
 
@@ -1651,13 +1682,13 @@
     insightsListEl.querySelectorAll(".mistake-delete-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = btn.dataset.id;
-        if (!confirm("Remove this mistake pattern?")) return;
+        if (!await showConfirm("Remove this mistake pattern?", "Remove", "Cancel")) return;
         try {
           await api("DELETE", `/api/mistakes/${id}`);
           mistakePatterns = mistakePatterns.filter((mp) => mp.id !== id);
           renderInsights();
         } catch (e) {
-          alert("Failed to delete: " + e.message);
+          await showAlert("Failed to delete: " + e.message);
         }
       });
     });
