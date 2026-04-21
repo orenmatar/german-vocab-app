@@ -234,7 +234,7 @@ def validate_word():
     return jsonify(result)
 
 
-@app.route("/api/words/<german>", methods=["PATCH"])
+@app.route("/api/words/<path:german>", methods=["PATCH"])
 def patch_word(german):
     body = request.get_json()
     word = find_word(data, german)
@@ -246,7 +246,7 @@ def patch_word(german):
     return jsonify(word)
 
 
-@app.route("/api/words/<german>", methods=["DELETE"])
+@app.route("/api/words/<path:german>", methods=["DELETE"])
 def delete_word(german):
     word = find_word(data, german)
     if not word:
