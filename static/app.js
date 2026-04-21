@@ -239,6 +239,10 @@
     if (body) opts.body = JSON.stringify(body);
 
     const res = await fetch(path, opts);
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      throw new Error(`Server error (${res.status}) — check the Flask console for details.`);
+    }
     const data = await res.json();
 
     if (!res.ok) {

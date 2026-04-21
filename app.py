@@ -145,6 +145,21 @@ grammar_data = load_grammar()
 mistakes_data = load_mistakes()
 
 
+# --- Error handlers (return JSON for API routes) ---
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Not found"}), 404
+    return e
+
+@app.errorhandler(500)
+def server_error(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": str(e)}), 500
+    return e
+
+
 # --- Page routes ---
 
 @app.route("/")
