@@ -279,6 +279,45 @@ def delete_word(german):
     return jsonify({"ok": True})
 
 
+@app.route("/api/words/<path:german>/reset-box", methods=["POST"])
+def reset_word_box(german):
+    word = find_word(data, german)
+    if not word:
+        return jsonify({"error": f"'{german}' not found."}), 404
+    word["box"] = 1
+    save_data(data)
+    return jsonify(word)
+
+
+@app.route("/api/prep/sample", methods=["GET"])
+def prep_sample():
+    count = min(int(request.args.get("count", 15)), len(data["words"]))
+    if count == 0:
+        return jsonify([])
+    strategy = request.args.get("strategy", "weighted")
+    if strategy == "random":
+        selected = random.sample(data["words"], count)
+    else:
+        selected = select_words(data["words"], count=count)
+    return jsonify(selected)
+
+
+@app.route("/api/prep/replace", methods=["POST"])
+def prep_replace():
+    body = request.get_json()
+    exclude = set(body.get("exclude", []))
+    strategy = body.get("strategy", "weighted")
+    pool = [w for w in data["words"] if w["german"] not in exclude]
+    if not pool:
+        return jsonify({"error": "No more words available to swap in."}), 400
+    if strategy == "random":
+        word = random.choice(pool)
+    else:
+        candidates = select_words(pool, count=min(5, len(pool)))
+        word = candidates[0] if candidates else random.choice(pool)
+    return jsonify(word)
+
+
 @app.route("/api/practice/batch", methods=["POST"])
 def practice_batch():
     if not data["words"]:

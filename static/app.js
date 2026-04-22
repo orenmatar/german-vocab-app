@@ -44,6 +44,7 @@
   const settingsView = document.getElementById("settings-view");
   const insightsListEl = document.getElementById("insights-list");
   const insightsEmptyEl = document.getElementById("insights-empty");
+  const prepView = document.getElementById("prep-view");
   const settingsSections = document.getElementById("settings-sections");
 
   // Word list
@@ -219,6 +220,7 @@
       grammarView.classList.toggle("active", view === "grammar");
       practiceView.classList.toggle("active", view === "practice");
       insightsView.classList.toggle("active", view === "insights");
+      prepView.classList.toggle("active", view === "prep");
       settingsView.classList.toggle("active", view === "settings");
 
       contentEl.classList.toggle("content--wide", view === "grammar");
@@ -405,6 +407,7 @@
             <span class="word-stats">${w.times_correct}/${w.times_seen} correct</span>
             <span class="word-actions">
               <button class="${starClass}" onclick="toggleStar('${escAttr(w.german)}')" title="${starTitle}">&#9733;</button>
+              <button class="btn-reset-box" onclick="resetWordBox('${escAttr(w.german)}')" title="Reset to box 1">↺</button>
               <button class="btn-delete" onclick="deleteWord('${escAttr(w.german)}')" title="Delete">&#x2715;</button>
             </span>
           </div>
@@ -1860,6 +1863,234 @@
     }
 
     container.querySelector(".drill-check-btn").style.display = "none";
+  }
+
+  // --- Reset box (words page) ---
+
+  window.resetWordBox = async function (german) {
+    if (!await showConfirm(`Reset "${german}" back to box 1?`, "Reset", "Cancel")) return;
+    try {
+      const updated = await api("POST", `/api/words/${encodeURIComponent(german)}/reset-box`);
+      const idx = words.findIndex((w) => w.german === german);
+      if (idx !== -1) words[idx] = updated;
+      renderWords();
+    } catch (e) {
+      await showAlert(e.message);
+    }
+  };
+
+  // --- Prep Tab ---
+
+  let prepBatch = [];       // current batch of word objects
+  let prepLocked = new Set(); // german strings locked against reshuffle
+  let prepCount = 15;
+  let prepStrategy = "weighted";
+
+  const prepCountVal = document.getElementById("prep-count-val");
+  const prepCountDec = document.getElementById("prep-count-dec");
+  const prepCountInc = document.getElementById("prep-count-inc");
+  const prepSampleBtn = document.getElementById("prep-sample-btn");
+  const prepEmptyEl = document.getElementById("prep-empty");
+  const prepResultsEl = document.getElementById("prep-results");
+  const prepListEl = document.getElementById("prep-list");
+  const prepReshuffleBtn = document.getElementById("prep-reshuffle-btn");
+  const prepCopyFullBtn = document.getElementById("prep-copy-full-btn");
+  const prepCopyWordsBtn = document.getElementById("prep-copy-words-btn");
+  const prepPrintBtn = document.getElementById("prep-print-btn");
+
+  prepCountDec.addEventListener("click", () => {
+    if (prepCount > 5) { prepCount--; prepCountVal.textContent = prepCount; }
+  });
+  prepCountInc.addEventListener("click", () => {
+    if (prepCount < 30) { prepCount++; prepCountVal.textContent = prepCount; }
+  });
+
+  document.querySelectorAll(".prep-strat-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".prep-strat-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      prepStrategy = btn.dataset.strategy;
+    });
+  });
+
+  prepSampleBtn.addEventListener("click", samplePrep);
+  prepReshuffleBtn.addEventListener("click", reshufflePrep);
+  prepCopyFullBtn.addEventListener("click", () => copyPrep("full"));
+  prepCopyWordsBtn.addEventListener("click", () => copyPrep("words"));
+  prepPrintBtn.addEventListener("click", () => window.print());
+
+  async function samplePrep() {
+    prepSampleBtn.disabled = true;
+    prepSampleBtn.classList.add("btn-loading");
+    prepLocked.clear();
+    try {
+      prepBatch = await api("GET", `/api/prep/sample?count=${prepCount}&strategy=${prepStrategy}`);
+      renderPrepList();
+    } catch (e) {
+      await showAlert(e.message);
+    } finally {
+      prepSampleBtn.disabled = false;
+      prepSampleBtn.classList.remove("btn-loading");
+    }
+  }
+
+  async function reshufflePrep() {
+    prepReshuffleBtn.disabled = true;
+    try {
+      const exclude = prepBatch.map((w) => w.german); // exclude whole current batch to maximise variety
+      const toReplace = prepBatch.filter((w) => !prepLocked.has(w.german));
+      const kept = prepBatch.filter((w) => prepLocked.has(w.german));
+      const needed = toReplace.length;
+      if (needed === 0) return;
+      const newSample = await api("GET", `/api/prep/sample?count=${needed + kept.length}&strategy=${prepStrategy}`);
+      const replacements = newSample.filter((w) => !prepLocked.has(w.german) && !kept.find((k) => k.german === w.german));
+      // Rebuild batch: locked words stay in place, others replaced in order
+      prepBatch = prepBatch.map((w) => {
+        if (prepLocked.has(w.german)) return w;
+        return replacements.shift() || w;
+      });
+      renderPrepList();
+    } catch (e) {
+      await showAlert(e.message);
+    } finally {
+      prepReshuffleBtn.disabled = false;
+    }
+  }
+
+  function renderPrepList() {
+    if (!prepBatch.length) {
+      prepEmptyEl.style.display = "block";
+      prepResultsEl.style.display = "none";
+      return;
+    }
+    prepEmptyEl.style.display = "none";
+    prepResultsEl.style.display = "block";
+    prepListEl.innerHTML = prepBatch.map((w, i) => buildPrepCard(w, i + 1)).join("");
+  }
+
+  function buildPrepCard(w, num) {
+    const isLocked = prepLocked.has(w.german);
+    const isStarred = w.starred;
+    const articleHtml = w.article ? `<span class="prep-card-article">${escHtml(w.article)} </span>` : "";
+    const pluralLine = w.plural ? `Pl. ${escHtml(w.plural)}` : "";
+    const verbLine = (w.preteritum || w.partizip2)
+      ? [w.preteritum, w.partizip2].filter(Boolean).map(escHtml).join(" · ")
+      : "";
+    const formsHtml = [pluralLine, verbLine].filter(Boolean).join(" &nbsp;·&nbsp; ");
+    const g = escAttr(w.german);
+    return `
+    <div class="prep-card${isLocked ? " locked" : ""}" id="prepcard-${g}">
+      <div class="prep-card-topbar">
+        <div class="prep-card-topbar-left">
+          <span class="prep-card-num">${num}.</span>
+          <button class="btn-prep-lock${isLocked ? " locked" : ""}" onclick="prepToggleLock('${g}')" title="${isLocked ? "Unlock" : "Lock (keep on reshuffle)"}">${isLocked ? "🔒" : "🔓"}</button>
+          <button class="${isStarred ? "btn-star starred" : "btn-star"}" onclick="prepToggleStar('${g}')" title="${isStarred ? "Unstar" : "Star"}">&#9733;</button>
+        </div>
+        <div class="prep-card-topbar-right">
+          <button class="btn btn-ghost btn-small" onclick="prepReplaceWord('${g}')" title="Swap for another word">⟳ Replace</button>
+          <button class="btn-delete" onclick="prepDeleteWord('${g}')" title="Delete from word list">&#x2715;</button>
+        </div>
+      </div>
+      <div class="prep-card-word">${articleHtml}${escHtml(w.german)}</div>
+      ${formsHtml ? `<div class="prep-card-forms">${formsHtml}</div>` : ""}
+      ${w.german_definition ? `<div class="prep-card-definition">${escHtml(w.german_definition)}</div>` : ""}
+      ${w.english_translation ? `<div class="prep-card-translation">${escHtml(w.english_translation)}</div>` : ""}
+      <div class="prep-card-footer">
+        <button class="btn btn-ghost btn-small" onclick="prepResetBox('${g}')" title="Reset to box 1">↺ Reset box</button>
+      </div>
+    </div>`;
+  }
+
+  window.prepToggleLock = function (german) {
+    if (prepLocked.has(german)) prepLocked.delete(german);
+    else prepLocked.add(german);
+    const card = document.getElementById(`prepcard-${escAttr(german)}`);
+    if (!card) return;
+    const w = prepBatch.find((x) => x.german === german);
+    if (w) card.outerHTML = buildPrepCard(w, prepBatch.indexOf(w) + 1);
+  };
+
+  window.prepToggleStar = async function (german) {
+    const w = prepBatch.find((x) => x.german === german);
+    if (!w) return;
+    const newStarred = !w.starred;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { starred: newStarred });
+      w.starred = newStarred;
+      const inList = words.find((x) => x.german === german);
+      if (inList) inList.starred = newStarred;
+      const card = document.getElementById(`prepcard-${escAttr(german)}`);
+      if (card) card.outerHTML = buildPrepCard(w, prepBatch.indexOf(w) + 1);
+    } catch (e) {
+      await showAlert("Failed to update star: " + e.message);
+    }
+  };
+
+  window.prepReplaceWord = async function (german) {
+    const exclude = prepBatch.map((w) => w.german);
+    try {
+      const replacement = await api("POST", "/api/prep/replace", { exclude, strategy: prepStrategy });
+      const idx = prepBatch.findIndex((w) => w.german === german);
+      if (idx !== -1) {
+        prepLocked.delete(german);
+        prepBatch[idx] = replacement;
+        renderPrepList();
+      }
+    } catch (e) {
+      await showAlert(e.message);
+    }
+  };
+
+  window.prepDeleteWord = async function (german) {
+    if (!await showConfirm(`Delete "${german}" from your word list?`, "Delete", "Cancel")) return;
+    try {
+      await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
+      words = words.filter((w) => w.german !== german);
+      prepBatch = prepBatch.filter((w) => w.german !== german);
+      prepLocked.delete(german);
+      renderPrepList();
+    } catch (e) {
+      await showAlert(e.message);
+    }
+  };
+
+  window.prepResetBox = async function (german) {
+    if (!await showConfirm(`Reset "${german}" back to box 1?`, "Reset", "Cancel")) return;
+    try {
+      const updated = await api("POST", `/api/words/${encodeURIComponent(german)}/reset-box`);
+      const idx = prepBatch.findIndex((w) => w.german === german);
+      if (idx !== -1) { prepBatch[idx] = updated; renderPrepList(); }
+      const inList = words.findIndex((w) => w.german === german);
+      if (inList !== -1) words[inList] = updated;
+    } catch (e) {
+      await showAlert(e.message);
+    }
+  };
+
+  function prepWordLine(w, mode) {
+    const articlePart = w.article ? `${w.article} ` : "";
+    const pluralPart = w.plural ? ` (Pl. ${w.plural})` : "";
+    const verbPart = (w.preteritum || w.partizip2)
+      ? ` (${[w.preteritum, w.partizip2].filter(Boolean).join(" · ")})`
+      : "";
+    const wordStr = `${articlePart}${w.german}${pluralPart || verbPart}`;
+    if (mode === "words") return wordStr;
+    const defPart = w.german_definition ? ` — ${w.german_definition}` : "";
+    const transPart = w.english_translation ? ` — ${w.english_translation}` : "";
+    return `${wordStr}${defPart}${transPart}`;
+  }
+
+  async function copyPrep(mode) {
+    const text = prepBatch.map((w, i) => `${i + 1}. ${prepWordLine(w, mode)}`).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = mode === "full" ? prepCopyFullBtn : prepCopyWordsBtn;
+      const orig = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch (e) {
+      await showAlert("Could not copy to clipboard.");
+    }
   }
 
   // --- Init ---

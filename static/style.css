@@ -206,6 +206,22 @@ body {
     background: #a04845;
 }
 
+.btn-reset-box {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-reset-box:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
 .btn-delete {
     background: none;
     border: none;
@@ -2017,6 +2033,210 @@ body {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Prep View --- */
+
+.prep-config {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prep-config-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    flex-wrap: wrap;
+}
+
+.prep-config-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.prep-label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.prep-count-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.prep-strategy {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.prep-strat-btn {
+    background: none;
+    border: none;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: var(--text-light);
+    font-family: var(--font-sans);
+}
+
+.prep-strat-btn.active {
+    background: var(--accent);
+    color: white;
+}
+
+.prep-empty {
+    color: var(--text-light);
+    padding: 40px 0;
+    text-align: center;
+}
+
+.prep-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.prep-toolbar-right {
+    display: flex;
+    gap: 8px;
+}
+
+.prep-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+}
+
+.prep-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: border-color 0.15s;
+}
+
+.prep-card.locked {
+    border-color: var(--accent);
+    border-width: 2px;
+    padding: 13px 15px;
+}
+
+.prep-card-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.prep-card-topbar-left {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.prep-card-topbar-right {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.prep-card-num {
+    font-size: 0.72rem;
+    color: var(--text-light);
+    min-width: 18px;
+}
+
+.btn-prep-lock {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.btn-prep-lock.locked {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.prep-card-word {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 2px;
+}
+
+.prep-card-article {
+    color: var(--text-light);
+    font-size: 0.95rem;
+}
+
+.prep-card-forms {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-bottom: 8px;
+}
+
+.prep-card-definition {
+    font-size: 0.83rem;
+    color: var(--text-light);
+    font-style: italic;
+    margin-bottom: 4px;
+    line-height: 1.45;
+}
+
+.prep-card-translation {
+    font-size: 0.88rem;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.prep-card-footer {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+/* Print styles for prep */
+@media print {
+    .nav, .prep-config, .prep-toolbar, .prep-card-topbar, .prep-card-footer {
+        display: none !important;
+    }
+    .view { display: none !important; }
+    #prep-view { display: block !important; }
+    #prep-results { display: block !important; }
+    body, .app, .content { background: white; }
+    .prep-list {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .prep-card {
+        border: 1px solid #ccc;
+        break-inside: avoid;
+        padding: 10px 12px;
+    }
+    .prep-card.locked { border-width: 1px; padding: 10px 12px; }
 }
 
 /* --- Insights / Mistake Patterns --- */

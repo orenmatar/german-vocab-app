@@ -19,6 +19,7 @@
                     <button class="nav-tab" data-view="grammar">Grammar</button>
                     <button class="nav-tab" data-view="practice">Practice</button>
                     <button class="nav-tab" data-view="insights">Insights</button>
+                    <button class="nav-tab" data-view="prep">Prep</button>
                     <button class="nav-tab" data-view="settings">Settings</button>
                 </div>
             </div>
@@ -343,6 +344,48 @@
                 </div>
                 <div id="insights-list" class="insights-list">
                     <!-- Mistake pattern cards rendered here -->
+                </div>
+            </div>
+
+            <!-- Prep View -->
+            <div id="prep-view" class="view">
+                <div class="prep-config">
+                    <div class="prep-config-row">
+                        <div class="prep-config-group">
+                            <label class="prep-label">Words</label>
+                            <div class="prep-count-ctrl">
+                                <button id="prep-count-dec" class="btn btn-ghost btn-small">−</button>
+                                <span id="prep-count-val">15</span>
+                                <button id="prep-count-inc" class="btn btn-ghost btn-small">+</button>
+                            </div>
+                        </div>
+                        <div class="prep-config-group">
+                            <label class="prep-label">Selection</label>
+                            <div class="prep-strategy">
+                                <button class="prep-strat-btn active" data-strategy="weighted">Weighted</button>
+                                <button class="prep-strat-btn" data-strategy="random">Random</button>
+                            </div>
+                        </div>
+                        <button id="prep-sample-btn" class="btn btn-primary">Sample Words</button>
+                    </div>
+                </div>
+
+                <div id="prep-empty" style="display:none;" class="prep-empty">
+                    Not enough words in your list yet.
+                </div>
+
+                <div id="prep-results" style="display:none;">
+                    <div class="prep-toolbar">
+                        <button id="prep-reshuffle-btn" class="btn btn-ghost btn-small">↺ Reshuffle</button>
+                        <div class="prep-toolbar-right">
+                            <button id="prep-copy-full-btn" class="btn btn-ghost btn-small">Copy (full)</button>
+                            <button id="prep-copy-words-btn" class="btn btn-ghost btn-small">Copy (words)</button>
+                            <button id="prep-print-btn" class="btn btn-ghost btn-small">🖨 Print</button>
+                        </div>
+                    </div>
+                    <div id="prep-list" class="prep-list">
+                        <!-- cards rendered here -->
+                    </div>
                 </div>
             </div>
 

@@ -109,10 +109,38 @@ def generate_tts_audio(text, voice="nova"):
         return None
 
 
+def _fix_unescaped_control_chars(text):
+    """Fix unescaped newlines/tabs within JSON string values."""
+    result = []
+    in_string = False
+    escape_next = False
+
+    for char in text:
+        if escape_next:
+            result.append(char)
+            escape_next = False
+        elif char == '\\' and in_string:
+            result.append(char)
+            escape_next = True
+        elif char == '"':
+            in_string = not in_string
+            result.append(char)
+        elif in_string and char == '\n':
+            result.append('\\n')
+        elif in_string and char == '\r':
+            result.append('\\r')
+        elif in_string and char == '\t':
+            result.append('\\t')
+        else:
+            result.append(char)
+
+    return ''.join(result)
+
+
 def parse_json_response(text):
     """
-    Parse a JSON array from LLM response text.
-    Handles cases where the LLM wraps JSON in markdown code blocks.
+    Parse a JSON object/array from LLM response text.
+    Handles markdown code fences and unescaped control characters in strings.
     """
     text = text.strip()
 
@@ -125,4 +153,8 @@ def parse_json_response(text):
             lines = lines[:-1]
         text = "\n".join(lines).strip()
 
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # LLM may have included literal newlines inside string values — fix and retry
+        return json.loads(_fix_unescaped_control_chars(text))
