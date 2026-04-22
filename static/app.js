@@ -54,6 +54,7 @@
   const wordListEl = document.getElementById("word-list");
   const sortSelect = document.getElementById("sort-select");
   const starFilterBtn = document.getElementById("star-filter-btn");
+  const wordStatsEl = document.getElementById("word-stats");
 
   // Grammar
   const newGrammarInput = document.getElementById("new-grammar");
@@ -326,11 +327,27 @@
 
   async function loadWords() {
     try {
-      words = await api("GET", "/api/words");
+      [words] = await Promise.all([
+        api("GET", "/api/words"),
+        api("GET", "/api/words/stats").then(renderWordStats).catch(() => {}),
+      ]);
       renderWords();
     } catch (e) {
       console.error("Failed to load words:", e);
     }
+  }
+
+  function renderWordStats(s) {
+    if (!s || s.total === 0) { wordStatsEl.style.display = "none"; return; }
+    const tile = (num, label, cls = "") =>
+      `<div class="stat-tile"><span class="stat-tile-num ${cls}">${num}</span><span class="stat-tile-label">${label}</span></div>`;
+    wordStatsEl.innerHTML =
+      tile(s.mastered, "mastered", "stat-mastered") +
+      tile(s.active, "in progress") +
+      tile(s.never_seen, "never seen", "stat-new") +
+      tile(s.box1, "box 1 only", "stat-box1") +
+      (s.accuracy !== null ? tile(s.accuracy + "%", "accuracy") : "");
+    wordStatsEl.style.display = "flex";
   }
 
   function renderWords() {
@@ -465,6 +482,7 @@
 
       words.push(newWord);
       renderWords();
+      api("GET", "/api/words/stats").then(renderWordStats).catch(() => {});
       newWordInput.value = "";
       newContextInput.value = "";
       newWordInput.focus();
@@ -484,6 +502,7 @@
       await api("DELETE", `/api/words/${encodeURIComponent(german)}`);
       words = words.filter((w) => w.german !== german);
       renderWords();
+      api("GET", "/api/words/stats").then(renderWordStats).catch(() => {});
     } catch (e) {
       await showAlert(e.message);
     }

@@ -282,6 +282,46 @@ body {
     animation: spin 0.6s linear infinite;
 }
 
+/* --- Word Stats --- */
+
+.word-stats {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.stat-tile {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 72px;
+    flex: 1;
+}
+
+.stat-tile-num {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.1;
+}
+
+.stat-tile-num.stat-mastered { color: #2e8b57; }
+.stat-tile-num.stat-new      { color: var(--text-light); }
+.stat-tile-num.stat-box1     { color: #c0392b; }
+
+.stat-tile-label {
+    font-size: 0.72rem;
+    color: var(--text-light);
+    margin-top: 3px;
+    text-align: center;
+    white-space: nowrap;
+}
+
 /* --- Word List --- */
 
 .word-list-header {

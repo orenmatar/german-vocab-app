@@ -211,6 +211,28 @@ def add_word():
     return jsonify(word), 201
 
 
+@app.route("/api/words/stats", methods=["GET"])
+def word_stats():
+    words_list = data["words"]
+    mastered_box = settings.get("MASTERED_BOX")
+    total = len(words_list)
+    mastered = sum(1 for w in words_list if w.get("box", 1) >= mastered_box)
+    never_seen = sum(1 for w in words_list if w.get("times_seen", 0) == 0)
+    box1 = sum(1 for w in words_list if w.get("box", 1) == 1)
+    active = sum(1 for w in words_list if w.get("times_seen", 0) > 0 and w.get("box", 1) < mastered_box)
+    total_seen = sum(w.get("times_seen", 0) for w in words_list)
+    total_correct = sum(w.get("times_correct", 0) for w in words_list)
+    accuracy = round(total_correct / total_seen * 100) if total_seen > 0 else None
+    return jsonify({
+        "total": total,
+        "mastered": mastered,
+        "active": active,
+        "never_seen": never_seen,
+        "box1": box1,
+        "accuracy": accuracy,
+    })
+
+
 @app.route("/api/words/validate", methods=["POST"])
 def validate_word():
     body = request.get_json()
