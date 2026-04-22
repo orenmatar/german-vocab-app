@@ -2213,9 +2213,10 @@ body {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
-    margin-top: auto;
-    padding-top: 10px;
+    margin-top: 10px;
+    padding-top: 8px;
     border-top: 1px solid var(--border);
+    opacity: 0.75;
 }
 
 /* Print styles for prep */

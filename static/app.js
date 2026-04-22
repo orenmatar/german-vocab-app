@@ -1981,13 +1981,10 @@
     return `
     <div class="prep-card${isLocked ? " locked" : ""}" id="prepcard-${g}">
       <div class="prep-card-topbar">
-        <div class="prep-card-topbar-left">
-          <span class="prep-card-num">${num}.</span>
-          <button class="btn-prep-lock${isLocked ? " locked" : ""}" onclick="prepToggleLock('${g}')" title="${isLocked ? "Unlock" : "Lock (keep on reshuffle)"}">${isLocked ? "🔒" : "🔓"}</button>
-          <button class="${isStarred ? "btn-star starred" : "btn-star"}" onclick="prepToggleStar('${g}')" title="${isStarred ? "Unstar" : "Star"}">&#9733;</button>
-        </div>
+        <span class="prep-card-num">${num}.</span>
         <div class="prep-card-topbar-right">
-          <button class="btn btn-ghost btn-small" onclick="prepReplaceWord('${g}')" title="Swap for another word">⟳ Replace</button>
+          <button class="${isStarred ? "btn-star starred" : "btn-star"}" onclick="prepToggleStar('${g}')" title="${isStarred ? "Unstar" : "Star"}">&#9733;</button>
+          <button class="btn-reset-box" onclick="prepResetBox('${g}')" title="Reset to box 1">↺</button>
           <button class="btn-delete" onclick="prepDeleteWord('${g}')" title="Delete from word list">&#x2715;</button>
         </div>
       </div>
@@ -1996,7 +1993,8 @@
       ${w.german_definition ? `<div class="prep-card-definition">${escHtml(w.german_definition)}</div>` : ""}
       ${w.english_translation ? `<div class="prep-card-translation">${escHtml(w.english_translation)}</div>` : ""}
       <div class="prep-card-footer">
-        <button class="btn btn-ghost btn-small" onclick="prepResetBox('${g}')" title="Reset to box 1">↺ Reset box</button>
+        <button class="btn-prep-lock${isLocked ? " locked" : ""}" onclick="prepToggleLock('${g}')" title="${isLocked ? "Unlock" : "Keep on reshuffle"}">${isLocked ? "🔒 Locked" : "🔓 Keep"}</button>
+        <button class="btn btn-ghost btn-small" onclick="prepReplaceWord('${g}')" title="Swap for another word">⟳ Replace</button>
       </div>
     </div>`;
   }
