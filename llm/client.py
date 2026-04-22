@@ -17,7 +17,7 @@ ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-5"
 OPENAI_DEFAULT_MODEL = "gpt-4o"
 
 
-def call_llm(system_prompt, user_prompt, model=None):
+def call_llm(system_prompt, user_prompt, model=None, thinking_budget=None):
     """
     Call the configured LLM provider and return the response text.
 
@@ -25,6 +25,9 @@ def call_llm(system_prompt, user_prompt, model=None):
         system_prompt: The system/instruction prompt.
         user_prompt: The user message.
         model: Override the default model (optional).
+        thinking_budget: If set (int), enables extended thinking on Anthropic with this
+                         token budget. Ignored for OpenAI. Use for tasks requiring deeper
+                         reasoning (e.g. grading writing, analysing mistakes).
 
     Returns:
         The response text as a string.
@@ -35,14 +38,14 @@ def call_llm(system_prompt, user_prompt, model=None):
     provider = os.environ.get("LLM_PROVIDER", "anthropic").lower()
 
     if provider == "anthropic":
-        return _call_anthropic(system_prompt, user_prompt, model)
+        return _call_anthropic(system_prompt, user_prompt, model, thinking_budget)
     elif provider == "openai":
         return _call_openai(system_prompt, user_prompt, model)
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: '{provider}'. Use 'anthropic' or 'openai'.")
 
 
-def _call_anthropic(system_prompt, user_prompt, model=None):
+def _call_anthropic(system_prompt, user_prompt, model=None, thinking_budget=None):
     import anthropic
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -52,13 +55,21 @@ def _call_anthropic(system_prompt, user_prompt, model=None):
     client = anthropic.Anthropic(api_key=api_key)
     model = model or ANTHROPIC_DEFAULT_MODEL
 
-    response = client.messages.create(
+    kwargs = dict(
         model=model,
-        max_tokens=4096,
+        max_tokens=16000 if thinking_budget else 4096,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
     )
+    if thinking_budget:
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
+    response = client.messages.create(**kwargs)
+
+    # With extended thinking the response has mixed blocks; return only the text block.
+    for block in response.content:
+        if block.type == "text":
+            return block.text
     return response.content[0].text
 
 

@@ -69,6 +69,12 @@ Each entry in `grammar.json` has:
 - `examples` — list of 3 example sentences
 - `enabled` — bool, whether it appears in practice
 
+## LLM Model Strategy
+- **Default model**: `claude-sonnet-4-5` (fast, used for sentences, passages, validation)
+- **Writing judge & mistake analysis**: `claude-sonnet-4-6` with **extended thinking** (`thinking_budget=8000` and `6000` respectively) — deeper reasoning for nuanced grammar feedback
+- `call_llm()` accepts optional `model` and `thinking_budget` params; thinking is Anthropic-only (OpenAI path ignores it)
+- Extended thinking response has mixed content blocks; `_call_anthropic` extracts only the `text` block
+
 ## Key Architecture Decisions
 - **Words are keyed by their German text** — no separate IDs. `german` field is the unique key everywhere.
 - **Leitner box system** (boxes 1–5) drives word selection weighting and mode selection.
