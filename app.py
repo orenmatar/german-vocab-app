@@ -298,7 +298,7 @@ def prep_sample():
     if strategy == "random":
         selected = random.sample(data["words"], count)
     else:
-        selected = select_words(data["words"], count=count)
+        selected = weighted_sample(data["words"], count)
     return jsonify(selected)
 
 
@@ -313,7 +313,7 @@ def prep_replace():
     if strategy == "random":
         word = random.choice(pool)
     else:
-        candidates = select_words(pool, count=min(5, len(pool)))
+        candidates = weighted_sample(pool, min(5, len(pool)))
         word = candidates[0] if candidates else random.choice(pool)
     return jsonify(word)
 
