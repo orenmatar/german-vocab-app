@@ -71,7 +71,7 @@ Each entry in `grammar.json` has:
 
 ## LLM Model Strategy
 - **Default model**: `claude-sonnet-4-5` (fast, used for sentences, passages, validation)
-- **Writing judge & mistake analysis**: `claude-sonnet-4-6` with **extended thinking** (`thinking_budget=8000` and `6000` respectively) — deeper reasoning for nuanced grammar feedback
+- **Writing judge & mistake analysis**: default model (`claude-sonnet-4-5`) with **extended thinking** (`thinking_budget=8000` and `6000` respectively) — deeper reasoning for nuanced grammar feedback
 - `call_llm()` accepts optional `model` and `thinking_budget` params; thinking is Anthropic-only (OpenAI path ignores it)
 - Extended thinking response has mixed content blocks; `_call_anthropic` extracts only the `text` block
 

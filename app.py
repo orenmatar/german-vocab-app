@@ -594,7 +594,7 @@ def practice_writing_judge():
 
     try:
         response_text = call_llm(system_prompt, user_prompt,
-                                  model="claude-sonnet-4-6", thinking_budget=8000)
+                                  thinking_budget=8000)
         result = parse_json_response(response_text)
     except Exception as e:
         return jsonify({"error": f"Judging failed: {str(e)}"}), 500
@@ -622,7 +622,7 @@ def practice_writing_analyze():
 
     try:
         response_text = call_llm(system_prompt, user_prompt,
-                                  model="claude-sonnet-4-6", thinking_budget=6000)
+                                  thinking_budget=6000)
         analysis = parse_json_response(response_text)
     except Exception as e:
         return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
