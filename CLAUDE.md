@@ -93,6 +93,7 @@ Each entry in `grammar.json` has:
 - **Multiple choice** (box 2+): Sentence with blank, pick correct word from 4 options. On a wrong answer, shows a word card for the picked word (so user can learn what it actually means) before showing the correct word's card.
 - **Reading passage** (separate flow): LLM writes a 2–3 paragraph text using ~8 vocab words. Words are highlighted and clickable (shows word card popup). After reading, user rates each word knew/didn't.
 - **Writing passage** (separate flow): LLM picks a grammar hint + 10 word suggestions + generates a topic. User writes a paragraph, LLM grades it (score, grammar usage, vocab detected, corrections).
+- **Free Write** (separate flow): User writes their own text on any topic. Optionally picks a grammar focus from enabled grammar points (dropdown with live preview). Same judge/feedback/insights pipeline as Writing Passage. No suggested words or LLM-generated topic. Ctrl/Cmd+Enter submits.
 
 ## In-Practice Word Management
 After the word reveal in sentence practice (comprehension + MC), and on the passage review screen, each word card shows ★ and ✕ buttons so the user can star or delete a word without leaving the session.

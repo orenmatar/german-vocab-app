@@ -1948,6 +1948,36 @@ body {
     padding-top: 8px;
 }
 
+/* --- Free Write grammar picker --- */
+
+.freewrite-grammar-select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    margin-top: 6px;
+    cursor: pointer;
+}
+
+.freewrite-grammar-preview {
+    margin-top: 10px;
+    font-size: 0.83rem;
+    color: var(--text-light);
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+
+.freewrite-grammar-preview strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 3px;
+}
+
 /* --- Word Card Component --- */
 
 .word-card {

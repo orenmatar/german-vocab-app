@@ -167,6 +167,16 @@
   const writingDoneBtn = document.getElementById("writing-done-btn");
   const writingWordCardSlot = document.getElementById("writing-word-card-slot");
   const startWritingBtn = document.getElementById("start-writing-btn");
+  const startFreewriteBtn = document.getElementById("start-freewrite-btn");
+  const practiceFreewrite = document.getElementById("practice-freewrite");
+  const freewriteBackBtn = document.getElementById("freewrite-back-btn");
+  const freewriteSetupEl = document.getElementById("freewrite-setup");
+  const freewriteFeedbackEl = document.getElementById("freewrite-feedback");
+  const freewriteInput = document.getElementById("freewrite-input");
+  const freewriteSubmitBtn = document.getElementById("freewrite-submit-btn");
+  const freewriteLoadingEl = document.getElementById("freewrite-loading");
+  const freewriteGrammarSelect = document.getElementById("freewrite-grammar-select");
+  const freewriteGrammarPreview = document.getElementById("freewrite-grammar-preview");
   const activeBackBtn = document.getElementById("active-back-btn");
   const passageBackBtn = document.getElementById("passage-back-btn");
   const writingBackBtn = document.getElementById("writing-back-btn");
@@ -718,7 +728,7 @@
   // --- Practice ---
 
   function showPracticeState(state) {
-    [practiceIdle, practiceLoading, practiceError, practiceActive, practiceSummary, practicePassage, practiceWriting].forEach(
+    [practiceIdle, practiceLoading, practiceError, practiceActive, practiceSummary, practicePassage, practiceWriting, practiceFreewrite].forEach(
       (el) => (el.style.display = "none")
     );
     state.style.display = "flex";
@@ -1618,63 +1628,67 @@
     }
   }
 
-  function showWritingFeedback(result, passage) {
-    writingSetupSection.style.display = "none";
-    writingFeedbackSection.style.display = "block";
-
-    // Score badge
+  // Shared feedback renderer — used by both Writing Passage and Free Write
+  function renderFeedback(result, passage, grammarHint, els) {
     const score = result.overall_score || "okay";
     const scoreLabels = { good: "Good", okay: "Okay", needs_work: "Needs Work" };
-    writingScoreBadge.textContent = scoreLabels[score] || score;
-    writingScoreBadge.className = `writing-score-badge ${score}`;
+    els.scoreBadge.textContent = scoreLabels[score] || score;
+    els.scoreBadge.className = `writing-score-badge ${score}`;
 
-    // Overall feedback
-    writingOverallFeedback.textContent = result.overall_feedback || "";
+    els.overallFeedback.textContent = result.overall_feedback || "";
 
-    // Grammar usage
-    const gh = writingSetupData.grammar_hint;
-    if (gh && gh.rule_name) {
+    if (grammarHint && grammarHint.rule_name) {
       const used = result.grammar_used;
-      writingGrammarFeedbackEl.innerHTML =
-        `<span class="writing-grammar-used ${used ? "yes" : "no"}">${used ? "✓ Used" : "✗ Not used"}: ${escHtml(gh.rule_name)}</span>` +
+      els.grammarFeedback.innerHTML =
+        `<span class="writing-grammar-used ${used ? "yes" : "no"}">${used ? "✓ Used" : "✗ Not used"}: ${escHtml(grammarHint.rule_name)}</span>` +
         (result.grammar_feedback ? `<div class="writing-grammar-feedback-text">${escHtml(result.grammar_feedback)}</div>` : "");
-      writingGrammarSection.style.display = "block";
+      els.grammarSection.style.display = "block";
     } else {
-      writingGrammarSection.style.display = "none";
+      els.grammarSection.style.display = "none";
     }
 
-    // Vocabulary used
-    const vocabUsed = result.vocabulary_used || [];
-    if (vocabUsed.length > 0) {
-      writingVocabUsed.innerHTML = vocabUsed
-        .map((w) => `<span class="writing-vocab-chip">${escHtml(w)}</span>`)
-        .join("");
-      writingVocabSection.style.display = "block";
-    } else {
-      writingVocabSection.style.display = "none";
+    if (els.vocabSection) {
+      const vocabUsed = result.vocabulary_used || [];
+      if (vocabUsed.length > 0) {
+        els.vocabUsed.innerHTML = vocabUsed.map((w) => `<span class="writing-vocab-chip">${escHtml(w)}</span>`).join("");
+        els.vocabSection.style.display = "block";
+      } else {
+        els.vocabSection.style.display = "none";
+      }
     }
 
-    // Errors
     const errors = result.errors || [];
     if (errors.length > 0) {
-      writingErrorsList.innerHTML =
+      els.errorsList.innerHTML =
         `<div class="writing-your-passage">${escHtml(passage)}</div>` +
-        errors
-          .map(
-            (err) => `
+        errors.map((err) => `
           <div class="writing-error-item">
             <div class="writing-error-original">${escHtml(err.original)}</div>
             <div class="writing-error-corrected">→ ${escHtml(err.corrected)}</div>
             <div class="writing-error-explanation">${escHtml(err.explanation)}</div>
-          </div>`
-          )
-          .join("");
-      writingErrorsSection.style.display = "block";
+          </div>`).join("");
+      els.errorsSection.style.display = "block";
     } else {
-      writingErrorsSection.style.display = "none";
+      els.errorsSection.style.display = "none";
     }
 
-    writingFeedbackSection.classList.add("fade-in");
+    els.feedbackSection.classList.add("fade-in");
+  }
+
+  function showWritingFeedback(result, passage) {
+    writingSetupSection.style.display = "none";
+    writingFeedbackSection.style.display = "block";
+    renderFeedback(result, passage, writingSetupData.grammar_hint, {
+      scoreBadge: writingScoreBadge,
+      overallFeedback: writingOverallFeedback,
+      grammarSection: writingGrammarSection,
+      grammarFeedback: writingGrammarFeedbackEl,
+      vocabSection: writingVocabSection,
+      vocabUsed: writingVocabUsed,
+      errorsSection: writingErrorsSection,
+      errorsList: writingErrorsList,
+      feedbackSection: writingFeedbackSection,
+    });
   }
 
   writingDoneBtn.addEventListener("click", () => {
@@ -2090,6 +2104,110 @@
       await showAlert("Could not copy to clipboard.");
     }
   }
+
+  // --- Free Write ---
+
+  startFreewriteBtn.addEventListener("click", () => {
+    freewriteInput.value = "";
+    freewriteSetupEl.style.display = "block";
+    freewriteFeedbackEl.style.display = "none";
+    freewriteInput.disabled = false;
+    freewriteSubmitBtn.disabled = false;
+    freewriteLoadingEl.style.display = "none";
+    populateFreewriteGrammarSelect();
+    showPracticeState(practiceFreewrite);
+  });
+
+  freewriteBackBtn.addEventListener("click", async () => {
+    if (freewriteFeedbackEl.style.display !== "none") {
+      showPracticeState(practiceIdle);
+      return;
+    }
+    if (freewriteInput.value.trim()) {
+      if (!await showConfirm("Go back? Your text will be lost.", "Go back", "Stay")) return;
+    }
+    showPracticeState(practiceIdle);
+  });
+
+  function populateFreewriteGrammarSelect() {
+    const enabled = grammarPoints.filter((gp) => gp.enabled !== false && gp.rule_name);
+    freewriteGrammarSelect.innerHTML =
+      `<option value="">— No grammar focus —</option>` +
+      enabled.map((gp) => `<option value="${escAttr(gp.id)}">${escHtml(gp.rule_name)}</option>`).join("");
+    freewriteGrammarPreview.style.display = "none";
+    freewriteGrammarPreview.innerHTML = "";
+  }
+
+  freewriteGrammarSelect.addEventListener("change", () => {
+    const id = freewriteGrammarSelect.value;
+    if (!id) {
+      freewriteGrammarPreview.style.display = "none";
+      return;
+    }
+    const gp = grammarPoints.find((g) => g.id === id);
+    if (!gp) return;
+    freewriteGrammarPreview.innerHTML =
+      `<strong>${escHtml(gp.rule_name)}</strong>` +
+      (gp.explanation ? escHtml(gp.explanation) : "");
+    freewriteGrammarPreview.style.display = "block";
+  });
+
+  freewriteSubmitBtn.addEventListener("click", submitFreewrite);
+  freewriteInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submitFreewrite();
+  });
+
+  async function submitFreewrite() {
+    const passage = freewriteInput.value.trim();
+    if (!passage) return;
+
+    const selectedId = freewriteGrammarSelect.value;
+    const grammarHint = selectedId
+      ? grammarPoints.find((gp) => gp.id === selectedId) || null
+      : null;
+
+    freewriteInput.disabled = true;
+    freewriteSubmitBtn.disabled = true;
+    freewriteLoadingEl.style.display = "flex";
+
+    try {
+      const result = await api("POST", "/api/practice/writing-judge", {
+        passage,
+        topic: "",
+        grammar_hint: grammarHint ? { rule_name: grammarHint.rule_name, explanation: grammarHint.explanation } : null,
+        suggested_words: [],
+      });
+
+      freewriteLoadingEl.style.display = "none";
+      freewriteSetupEl.style.display = "none";
+      freewriteFeedbackEl.style.display = "block";
+
+      renderFeedback(result, passage, grammarHint, {
+        scoreBadge: document.getElementById("freewrite-score-badge"),
+        overallFeedback: document.getElementById("freewrite-overall-feedback"),
+        grammarSection: document.getElementById("freewrite-grammar-section"),
+        grammarFeedback: document.getElementById("freewrite-grammar-feedback"),
+        vocabSection: null,
+        vocabUsed: null,
+        errorsSection: document.getElementById("freewrite-errors-section"),
+        errorsList: document.getElementById("freewrite-errors-list"),
+        feedbackSection: freewriteFeedbackEl,
+      });
+
+      if (result.has_errors && result.errors && result.errors.length > 0) {
+        api("POST", "/api/practice/writing-analyze", { errors: result.errors }).catch(() => {});
+      }
+    } catch (e) {
+      freewriteLoadingEl.style.display = "none";
+      freewriteInput.disabled = false;
+      freewriteSubmitBtn.disabled = false;
+      await showAlert("Failed to check your writing: " + e.message);
+    }
+  }
+
+  document.getElementById("freewrite-done-btn").addEventListener("click", () => {
+    showPracticeState(practiceIdle);
+  });
 
   // --- Init ---
 

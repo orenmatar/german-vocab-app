@@ -98,6 +98,7 @@
                             <button id="start-practice-btn" class="btn btn-secondary btn-large">Sentence Practice</button>
                             <button id="start-passage-btn" class="btn btn-secondary btn-large">Reading Passage</button>
                             <button id="start-writing-btn" class="btn btn-secondary btn-large">Writing Passage</button>
+                            <button id="start-freewrite-btn" class="btn btn-secondary btn-large">Free Write</button>
                         </div>
                     </div>
                 </div>
@@ -305,6 +306,57 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+
+                <!-- Free Write state -->
+                <div id="practice-freewrite" class="practice-state" style="display:none;">
+                    <div class="practice-back-row practice-back-row--wide">
+                        <button class="practice-back-btn" id="freewrite-back-btn">&#8592; Back</button>
+                    </div>
+                    <div class="writing-container">
+                        <div id="freewrite-setup">
+                            <div class="practice-label">Free Writing</div>
+                            <div class="writing-layout">
+                                <div class="writing-main">
+                                    <div class="writing-input-block">
+                                        <textarea id="freewrite-input" placeholder="Write your German text here..." rows="10"></textarea>
+                                        <button id="freewrite-submit-btn" class="btn btn-primary btn-large">Get Feedback</button>
+                                    </div>
+                                    <div id="freewrite-loading" class="audio-loading" style="display:none;">
+                                        <div class="spinner-small"></div>
+                                        <span>Checking your writing...</span>
+                                    </div>
+                                </div>
+                                <div class="writing-sidebar">
+                                    <div class="writing-grammar-block" style="display:block;">
+                                        <div class="writing-grammar-label">Grammar focus (optional)</div>
+                                        <select id="freewrite-grammar-select" class="freewrite-grammar-select">
+                                            <option value="">— No grammar focus —</option>
+                                        </select>
+                                        <div id="freewrite-grammar-preview" class="freewrite-grammar-preview" style="display:none;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="freewrite-feedback" style="display:none;">
+                            <div class="practice-label">Writing Feedback</div>
+                            <div class="writing-score-row">
+                                <div class="writing-score-badge" id="freewrite-score-badge"></div>
+                            </div>
+                            <div class="writing-overall-feedback" id="freewrite-overall-feedback"></div>
+                            <div class="writing-section" id="freewrite-grammar-section" style="display:none;">
+                                <div class="writing-section-title">Grammar point</div>
+                                <div id="freewrite-grammar-feedback"></div>
+                            </div>
+                            <div class="writing-section" id="freewrite-errors-section" style="display:none;">
+                                <div class="writing-section-title">Corrections</div>
+                                <div id="freewrite-errors-list"></div>
+                            </div>
+                            <div class="writing-done-area">
+                                <button id="freewrite-done-btn" class="btn btn-primary btn-large">Done</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
