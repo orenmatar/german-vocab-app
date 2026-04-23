@@ -6,28 +6,34 @@ Switch providers by setting the LLM_PROVIDER env var:
   - "openai" — uses OPENAI_API_KEY
 
 No code changes needed to swap providers.
+
+Two quality tiers — pass quality="fast" or quality="smart":
+  - "fast"  → cheap, quick model for sentence/passage/validation tasks
+  - "smart" → better model for writing assessment and mistake analysis
 """
 
 import os
 import json
 
 
-# Default models — change these if you want a different model
-ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-5"
-OPENAI_DEFAULT_MODEL = "gpt-4o"
+# Model tiers — edit these to swap models without touching any other code
+ANTHROPIC_FAST_MODEL  = "claude-haiku-4-5-20251001"
+ANTHROPIC_SMART_MODEL = "claude-sonnet-4-5"
+
+OPENAI_FAST_MODEL  = "gpt-4o-mini"
+OPENAI_SMART_MODEL = "gpt-4o"
 
 
-def call_llm(system_prompt, user_prompt, model=None, thinking_budget=None):
+def call_llm(system_prompt, user_prompt, quality="fast", thinking_budget=None):
     """
     Call the configured LLM provider and return the response text.
 
     Args:
-        system_prompt: The system/instruction prompt.
-        user_prompt: The user message.
-        model: Override the default model (optional).
+        system_prompt:   The system/instruction prompt.
+        user_prompt:     The user message.
+        quality:         "fast" (default) or "smart". Selects the model tier.
         thinking_budget: If set (int), enables extended thinking on Anthropic with this
-                         token budget. Ignored for OpenAI. Use for tasks requiring deeper
-                         reasoning (e.g. grading writing, analysing mistakes).
+                         token budget. Ignored for OpenAI. Automatically implies "smart".
 
     Returns:
         The response text as a string.
@@ -35,17 +41,20 @@ def call_llm(system_prompt, user_prompt, model=None, thinking_budget=None):
     Raises:
         Exception with a descriptive message on failure.
     """
+    if thinking_budget:
+        quality = "smart"
+
     provider = os.environ.get("LLM_PROVIDER", "anthropic").lower()
 
     if provider == "anthropic":
-        return _call_anthropic(system_prompt, user_prompt, model, thinking_budget)
+        return _call_anthropic(system_prompt, user_prompt, quality, thinking_budget)
     elif provider == "openai":
-        return _call_openai(system_prompt, user_prompt, model)
+        return _call_openai(system_prompt, user_prompt, quality)
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: '{provider}'. Use 'anthropic' or 'openai'.")
 
 
-def _call_anthropic(system_prompt, user_prompt, model=None, thinking_budget=None):
+def _call_anthropic(system_prompt, user_prompt, quality="fast", thinking_budget=None):
     import anthropic
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -53,7 +62,7 @@ def _call_anthropic(system_prompt, user_prompt, model=None, thinking_budget=None
         raise ValueError("ANTHROPIC_API_KEY not set in .env file.")
 
     client = anthropic.Anthropic(api_key=api_key)
-    model = model or ANTHROPIC_DEFAULT_MODEL
+    model = ANTHROPIC_SMART_MODEL if quality == "smart" else ANTHROPIC_FAST_MODEL
 
     kwargs = dict(
         model=model,
@@ -73,7 +82,7 @@ def _call_anthropic(system_prompt, user_prompt, model=None, thinking_budget=None
     return response.content[0].text
 
 
-def _call_openai(system_prompt, user_prompt, model=None):
+def _call_openai(system_prompt, user_prompt, quality="fast"):
     import openai
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -81,7 +90,7 @@ def _call_openai(system_prompt, user_prompt, model=None):
         raise ValueError("OPENAI_API_KEY not set in .env file.")
 
     client = openai.OpenAI(api_key=api_key)
-    model = model or OPENAI_DEFAULT_MODEL
+    model = OPENAI_SMART_MODEL if quality == "smart" else OPENAI_FAST_MODEL
 
     response = client.chat.completions.create(
         model=model,
@@ -158,7 +167,6 @@ def parse_json_response(text):
     # Strip markdown code fences if present
     if text.startswith("```"):
         lines = text.split("\n")
-        # Remove first line (```json or ```) and last line (```)
         lines = lines[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
@@ -167,5 +175,4 @@ def parse_json_response(text):
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # LLM may have included literal newlines inside string values — fix and retry
         return json.loads(_fix_unescaped_control_chars(text))

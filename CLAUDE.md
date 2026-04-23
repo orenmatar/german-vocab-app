@@ -70,10 +70,18 @@ Each entry in `grammar.json` has:
 - `enabled` — bool, whether it appears in practice
 
 ## LLM Model Strategy
-- **Default model**: `claude-sonnet-4-5` (fast, used for sentences, passages, validation)
-- **Writing judge & mistake analysis**: default model (`claude-sonnet-4-5`) with **extended thinking** (`thinking_budget=8000` and `6000` respectively) — deeper reasoning for nuanced grammar feedback
-- `call_llm()` accepts optional `model` and `thinking_budget` params; thinking is Anthropic-only (OpenAI path ignores it)
-- Extended thinking response has mixed content blocks; `_call_anthropic` extracts only the `text` block
+Two quality tiers, both providers:
+
+| Tier | Anthropic | OpenAI |
+|------|-----------|--------|
+| `fast` (default) | `claude-haiku-4-5-20251001` | `gpt-4o-mini` |
+| `smart` | `claude-sonnet-4-5` | `gpt-4o` |
+
+- Pass `quality="fast"` or `quality="smart"` to `call_llm()`. Default is `"fast"`.
+- `thinking_budget` (int) enables Anthropic extended thinking and **auto-promotes to `smart`**. Ignored for OpenAI.
+- **Fast tasks**: word validation, sentence generation, passage generation, topic generation, grammar validation, mistake drill
+- **Smart tasks**: writing judge (`thinking_budget=8000`), mistake analysis (`thinking_budget=6000`)
+- To swap models, edit `ANTHROPIC_FAST_MODEL` / `ANTHROPIC_SMART_MODEL` / `OPENAI_FAST_MODEL` / `OPENAI_SMART_MODEL` in `llm/client.py` — no other changes needed.
 
 ## Key Architecture Decisions
 - **Words are keyed by their German text** — no separate IDs. `german` field is the unique key everywhere.
