@@ -30,5 +30,6 @@ Rules:
 - Be generous in interpretation. Misspellings, wrong German, English approximations — try to understand the intent.
 - "konjuktiv 2" → Konjunktiv II. "infiniv mit zu" → Infinitiv mit zu. "accusativ" → Akkusativ. Use the correct German grammatical term in rule_name.
 - The explanation should describe the GENERAL rule, not just the narrow example the user gave. Cover the full pattern.
-- Examples should be natural B1–B2 level sentences, varied (different subjects, contexts).
+- IMPORTANT: If the user's input explicitly lists specific words, conjunctions, prepositions, or structures (e.g. "weil, denn, wegen, aus, dank, auf diesem Grund"), you MUST include ALL of them in the explanation. The user is telling you exactly what they want covered — do not drop any item they explicitly named. Mention each one by name in the explanation.
+- Examples should be natural B1–B2 level sentences, varied (different subjects, contexts). Prefer examples that use the specific terms the user mentioned.
 - Return ONLY the JSON object, no other text.
