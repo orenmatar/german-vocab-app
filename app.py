@@ -27,6 +27,7 @@ app.permanent_session_lifetime = timedelta(days=30)
 DATA_FILE = Path(__file__).parent / "data" / "words.json"
 GRAMMAR_FILE = Path(__file__).parent / "data" / "grammar.json"
 MISTAKES_FILE = Path(__file__).parent / "data" / "mistakes.json"
+PHRASES_FILE = Path(__file__).parent / "data" / "phrases.json"
 PROMPTS_DIR = Path(__file__).parent / "llm" / "prompts"
 
 # --- Auth ---
@@ -108,6 +109,27 @@ def save_mistakes(mdata):
         json.dump(mdata, f, indent=2, ensure_ascii=False)
 
 
+def load_phrases():
+    if not PHRASES_FILE.exists():
+        PHRASES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        save_phrases({"phrases": []})
+    with open(PHRASES_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_phrases(pdata):
+    PHRASES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(PHRASES_FILE, "w", encoding="utf-8") as f:
+        json.dump(pdata, f, indent=2, ensure_ascii=False)
+
+
+def find_phrase(pdata, german):
+    for p in pdata["phrases"]:
+        if p["german"] == german:
+            return p
+    return None
+
+
 def _normalize_de(s):
     """Normalize German text for comparison: lowercase, strip umlauts."""
     return s.lower().replace("ä", "a").replace("ö", "o").replace("ü", "u").replace("ß", "ss")
@@ -143,6 +165,7 @@ def _is_plausible_form(word, candidate):
 data = load_data()
 grammar_data = load_grammar()
 mistakes_data = load_mistakes()
+phrases_data = load_phrases()
 
 
 # --- Error handlers (return JSON for API routes) ---
@@ -220,16 +243,12 @@ def word_stats():
     never_seen = sum(1 for w in words_list if w.get("times_seen", 0) == 0)
     box1 = sum(1 for w in words_list if w.get("box", 1) == 1)
     active = sum(1 for w in words_list if w.get("times_seen", 0) > 0 and w.get("box", 1) < mastered_box)
-    total_seen = sum(w.get("times_seen", 0) for w in words_list)
-    total_correct = sum(w.get("times_correct", 0) for w in words_list)
-    accuracy = round(total_correct / total_seen * 100) if total_seen > 0 else None
     return jsonify({
         "total": total,
         "mastered": mastered,
         "active": active,
         "never_seen": never_seen,
         "box1": box1,
-        "accuracy": accuracy,
     })
 
 
@@ -793,6 +812,81 @@ def delete_grammar(gp_id):
             save_grammar(grammar_data)
             return jsonify({"ok": True})
     return jsonify({"error": "Grammar point not found."}), 404
+
+
+# --- Phrases API ---
+
+@app.route("/api/phrases", methods=["GET"])
+def get_phrases():
+    return jsonify(phrases_data["phrases"])
+
+
+@app.route("/api/phrases", methods=["POST"])
+def add_phrase():
+    body = request.get_json()
+    german = body.get("german", "").strip()
+
+    if not german:
+        return jsonify({"error": "Phrase is required."}), 400
+
+    if find_phrase(phrases_data, german):
+        return jsonify({"error": f"'{german}' already exists."}), 409
+
+    phrase = {
+        "german": german,
+        "context_note": body.get("context_note", "").strip(),
+        "german_explanation": body.get("german_explanation", "").strip(),
+        "english_translation": body.get("english_translation", "").strip(),
+        "added_at": datetime.now().isoformat(),
+        "starred": False,
+    }
+
+    phrases_data["phrases"].append(phrase)
+    save_phrases(phrases_data)
+    return jsonify(phrase), 201
+
+
+@app.route("/api/phrases/validate", methods=["POST"])
+def validate_phrase():
+    body = request.get_json()
+    phrase = body.get("phrase", "").strip()
+    context_note = body.get("context_note", "").strip()
+
+    if not phrase:
+        return jsonify({"error": "Phrase is required."}), 400
+
+    system_prompt = (PROMPTS_DIR / "validate_phrase.txt").read_text(encoding="utf-8")
+    user_prompt = json.dumps({"phrase": phrase, "context_note": context_note}, ensure_ascii=False)
+
+    try:
+        response_text = call_llm(system_prompt, user_prompt)
+        result = parse_json_response(response_text)
+    except Exception as e:
+        return jsonify({"error": f"Validation failed: {str(e)}"}), 500
+
+    return jsonify(result)
+
+
+@app.route("/api/phrases/<path:german>", methods=["PATCH"])
+def patch_phrase(german):
+    body = request.get_json()
+    phrase = find_phrase(phrases_data, german)
+    if not phrase:
+        return jsonify({"error": f"'{german}' not found."}), 404
+    if "starred" in body:
+        phrase["starred"] = bool(body["starred"])
+    save_phrases(phrases_data)
+    return jsonify(phrase)
+
+
+@app.route("/api/phrases/<path:german>", methods=["DELETE"])
+def delete_phrase(german):
+    phrase = find_phrase(phrases_data, german)
+    if not phrase:
+        return jsonify({"error": f"'{german}' not found."}), 404
+    phrases_data["phrases"].remove(phrase)
+    save_phrases(phrases_data)
+    return jsonify({"ok": True})
 
 
 # --- Mistakes / Insights API ---

@@ -413,6 +413,29 @@ body {
     color: var(--text-light);
 }
 
+/* --- Phrases --- */
+
+.form-row--phrase .phrase-input,
+.form-row--phrase input#new-phrase {
+    flex: 2;
+}
+
+.phrase-item .word-item-main {
+    align-items: flex-start;
+}
+
+.phrase-german {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.phrase-item .word-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
 .word-plural {
     font-weight: 400;
     font-size: 0.85rem;

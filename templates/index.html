@@ -16,6 +16,7 @@
                 <span class="nav-title">German Vocab</span>
                 <div class="nav-tabs">
                     <button class="nav-tab active" data-view="words">My Words</button>
+                    <button class="nav-tab" data-view="phrases">Phrases</button>
                     <button class="nav-tab" data-view="grammar">Grammar</button>
                     <button class="nav-tab" data-view="practice">Practice</button>
                     <button class="nav-tab" data-view="insights">Insights</button>
@@ -55,6 +56,33 @@
 
                 <div id="word-list" class="word-list">
                     <!-- Words rendered here -->
+                </div>
+            </div>
+
+            <!-- Phrases View -->
+            <div id="phrases-view" class="view">
+                <div class="add-word-form">
+                    <div class="form-row form-row--phrase">
+                        <input type="text" id="new-phrase" placeholder="German phrase (e.g. &quot;es ist bekannt, dass&quot;, &quot;du kannst immer noch X&quot;)..." autocomplete="off">
+                        <input type="text" id="new-phrase-context" placeholder="Context or example (optional, helps the AI)..." autocomplete="off">
+                        <button id="add-phrase-btn" class="btn btn-primary">Add</button>
+                    </div>
+                </div>
+
+                <div class="word-list-header">
+                    <span id="phrase-count">0 phrases</span>
+                    <div class="sort-controls">
+                        <button id="phrase-star-filter-btn" class="btn btn-ghost btn-small star-filter-btn" title="Show starred phrases only">&#9733; Starred</button>
+                        <label>Sort by:</label>
+                        <select id="phrase-sort-select">
+                            <option value="added">Date Added</option>
+                            <option value="alpha">Alphabetical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="phrase-list" class="word-list">
+                    <!-- Phrases rendered here -->
                 </div>
             </div>
 

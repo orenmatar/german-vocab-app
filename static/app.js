@@ -20,6 +20,10 @@
   // Word list filter
   let filterStarred = false;
 
+  // Phrases
+  let phrases = [];
+  let filterPhrasesStarred = false;
+
   // Passage state
   let passageData = null;
   let passageRatings = {};
@@ -38,6 +42,7 @@
   // --- DOM refs ---
   const tabs = document.querySelectorAll(".nav-tab");
   const wordsView = document.getElementById("words-view");
+  const phrasesView = document.getElementById("phrases-view");
   const grammarView = document.getElementById("grammar-view");
   const practiceView = document.getElementById("practice-view");
   const insightsView = document.getElementById("insights-view");
@@ -56,6 +61,15 @@
   const sortSelect = document.getElementById("sort-select");
   const starFilterBtn = document.getElementById("star-filter-btn");
   const wordStatsEl = document.getElementById("word-stats");
+
+  // Phrases
+  const newPhraseInput = document.getElementById("new-phrase");
+  const newPhraseContextInput = document.getElementById("new-phrase-context");
+  const addPhraseBtn = document.getElementById("add-phrase-btn");
+  const phraseCountEl = document.getElementById("phrase-count");
+  const phraseListEl = document.getElementById("phrase-list");
+  const phraseSortSelect = document.getElementById("phrase-sort-select");
+  const phraseStarFilterBtn = document.getElementById("phrase-star-filter-btn");
 
   // Grammar
   const newGrammarInput = document.getElementById("new-grammar");
@@ -227,15 +241,17 @@
 
       const view = tab.dataset.view;
       wordsView.classList.toggle("active", view === "words");
+      phrasesView.classList.toggle("active", view === "phrases");
       grammarView.classList.toggle("active", view === "grammar");
       practiceView.classList.toggle("active", view === "practice");
       insightsView.classList.toggle("active", view === "insights");
       prepView.classList.toggle("active", view === "prep");
       settingsView.classList.toggle("active", view === "settings");
 
-      contentEl.classList.toggle("content--wide", view === "grammar");
+      contentEl.classList.toggle("content--wide", view === "grammar" || view === "phrases");
 
       if (view === "words") loadWords();
+      if (view === "phrases") loadPhrases();
       if (view === "grammar") loadGrammar();
       if (view === "insights") loadInsights();
       if (view === "settings") loadSettings();
@@ -358,7 +374,7 @@
       tile(s.active, "in progress") +
       tile(s.never_seen, "never seen", "stat-new") +
       tile(s.box1, "box 1 only", "stat-box1") +
-      (s.accuracy !== null ? tile(s.accuracy + "%", "accuracy") : "");
+      tile(s.total > 0 ? Math.round(s.mastered / s.total * 100) + "%" : "0%", "mastered %", "stat-mastered");
     wordStatsEl.style.display = "flex";
   }
 
@@ -577,6 +593,168 @@
     starFilterBtn.classList.toggle("active", filterStarred);
     renderWords();
   });
+
+  // --- Phrases ---
+
+  async function loadPhrases() {
+    try {
+      phrases = await api("GET", "/api/phrases");
+      renderPhrases();
+    } catch (e) {
+      console.error("Failed to load phrases:", e);
+    }
+  }
+
+  function renderPhrases() {
+    const sort = phraseSortSelect ? phraseSortSelect.value : "added";
+    let sorted = [...phrases];
+
+    if (sort === "alpha") {
+      sorted.sort((a, b) => a.german.localeCompare(b.german, "de"));
+    } else {
+      sorted.sort((a, b) => (b.added_at || "").localeCompare(a.added_at || ""));
+    }
+
+    const displayed = filterPhrasesStarred ? sorted.filter((p) => p.starred) : sorted;
+
+    const countLabel = filterPhrasesStarred
+      ? `${displayed.length} starred / ${phrases.length} total`
+      : `${phrases.length} phrase${phrases.length !== 1 ? "s" : ""}`;
+    phraseCountEl.textContent = countLabel;
+
+    if (displayed.length === 0) {
+      phraseListEl.innerHTML = filterPhrasesStarred
+        ? '<div style="text-align:center;color:var(--text-light);padding:40px;">No starred phrases yet. Click the ★ next to any phrase to star it.</div>'
+        : '<div style="text-align:center;color:var(--text-light);padding:40px;">No phrases yet. Add your first German phrase above — things like &quot;es ist bekannt, dass&quot;, &quot;auf jeden Fall&quot;, &quot;du kannst immer noch X&quot;.</div>';
+      return;
+    }
+
+    phraseListEl.innerHTML = displayed
+      .map((p) => {
+        const starClass = p.starred ? "btn-star starred" : "btn-star";
+        const starTitle = p.starred ? "Unstar this phrase" : "Star this phrase";
+
+        const detailParts = [];
+        if (p.english_translation) detailParts.push(escHtml(p.english_translation));
+        if (p.german_explanation) detailParts.push(`<em>${escHtml(p.german_explanation)}</em>`);
+        if (p.context_note) detailParts.push(`(${escHtml(p.context_note)})`);
+        const detailsHtml = detailParts.length
+          ? `<div class="word-item-details">${detailParts.join(" &mdash; ")}</div>`
+          : "";
+
+        return `
+        <div class="word-item phrase-item fade-in">
+          <div class="word-item-main">
+            <span class="word-german phrase-german">${escHtml(p.german)}</span>
+            <span class="word-actions">
+              <button class="${starClass}" onclick="togglePhraseStar('${escAttr(p.german)}')" title="${starTitle}">&#9733;</button>
+              <button class="btn-delete" onclick="deletePhrase('${escAttr(p.german)}')" title="Delete">&#x2715;</button>
+            </span>
+          </div>
+          ${detailsHtml}
+        </div>`;
+      })
+      .join("");
+  }
+
+  let isAddingPhrase = false;
+
+  if (addPhraseBtn) {
+    addPhraseBtn.addEventListener("click", addPhrase);
+    newPhraseInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addPhrase();
+    });
+    newPhraseContextInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addPhrase();
+    });
+    phraseSortSelect.addEventListener("change", renderPhrases);
+    phraseStarFilterBtn.addEventListener("click", () => {
+      filterPhrasesStarred = !filterPhrasesStarred;
+      phraseStarFilterBtn.classList.toggle("active", filterPhrasesStarred);
+      renderPhrases();
+    });
+  }
+
+  async function addPhrase() {
+    if (isAddingPhrase) return;
+    const german = newPhraseInput.value.trim();
+    if (!german) return;
+
+    isAddingPhrase = true;
+    const context_note = newPhraseContextInput.value.trim();
+
+    try {
+      addPhraseBtn.disabled = true;
+      addPhraseBtn.classList.add("btn-loading");
+
+      const validation = await api("POST", "/api/phrases/validate", {
+        phrase: german,
+        context_note,
+      });
+
+      addPhraseBtn.classList.remove("btn-loading");
+
+      if (!validation.is_valid) {
+        await showAlert(`"${german}" doesn't look like a valid German phrase. (For single words, use the My Words tab.)`);
+        addPhraseBtn.disabled = false;
+        return;
+      }
+
+      let finalPhrase = validation.corrected || german;
+      if (finalPhrase !== german) {
+        const accept = await showConfirm(
+          `Did you mean "${finalPhrase}"?\n\n${validation.correction_note || "Spelling/capitalization was corrected."}`,
+          "Yes, use this", "No, keep mine"
+        );
+        if (!accept) {
+          finalPhrase = german;
+        }
+      }
+
+      const newPhrase = await api("POST", "/api/phrases", {
+        german: finalPhrase,
+        context_note,
+        german_explanation: validation.german_explanation || "",
+        english_translation: validation.english_translation || "",
+      });
+
+      phrases.push(newPhrase);
+      renderPhrases();
+      newPhraseInput.value = "";
+      newPhraseContextInput.value = "";
+      newPhraseInput.focus();
+    } catch (e) {
+      addPhraseBtn.classList.remove("btn-loading");
+      await showAlert(e.message);
+    } finally {
+      addPhraseBtn.disabled = false;
+      isAddingPhrase = false;
+    }
+  }
+
+  window.togglePhraseStar = async function (german) {
+    const p = phrases.find((x) => x.german === german);
+    if (!p) return;
+    const newStarred = !p.starred;
+    try {
+      await api("PATCH", `/api/phrases/${encodeURIComponent(german)}`, { starred: newStarred });
+      p.starred = newStarred;
+      renderPhrases();
+    } catch (e) {
+      await showAlert("Failed to update star: " + e.message);
+    }
+  };
+
+  window.deletePhrase = async function (german) {
+    if (!await showConfirm(`Delete "${german}"?`, "Delete", "Cancel")) return;
+    try {
+      await api("DELETE", `/api/phrases/${encodeURIComponent(german)}`);
+      phrases = phrases.filter((p) => p.german !== german);
+      renderPhrases();
+    } catch (e) {
+      await showAlert(e.message);
+    }
+  };
 
   // --- Grammar ---
 
