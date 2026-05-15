@@ -125,6 +125,11 @@ After the word reveal in sentence practice (comprehension + MC), and on the pass
 ## Edit Word Modal
 Each row in the Words list has a ✎ pencil button that opens a modal to edit `context_note` and `variants` (comma-separated text → list). PATCH `/api/words/<path:german>` accepts both fields (in addition to `starred`). Used for words added before variants existed, or to add a hint after first practicing.
 
+## Add-word Validation Flow
+- `validate_word.txt` validates the main word AND any variants in a single LLM call. Returns `corrected_variants` + `variants_note`.
+- Frontend silently accepts the corrections when the change is only case/umlaut/ß (uses `normalize()` and `sameNormalizedSet()` helpers in app.js). Anything bigger (real spelling fix, dropped unrecognizable variant) shows a single combined confirm dialog so the user can accept or cancel.
+- The LLM is instructed to be generous with variant corrections (umlauts, case, small typos) and only DROP a variant if it's truly gibberish — drops are summarized in `variants_note`.
+
 ## Words Page — Statistics Bar
 Above the word list, a row of stat tiles shows:
 - **Mastered** (green) — `box >= MASTERED_BOX` setting (default 4)

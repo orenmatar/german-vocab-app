@@ -357,6 +357,15 @@
       .replace(/ß/g, "ss");
   }
 
+  // True if two arrays of strings differ only in case/umlauts/ß-vs-ss/order.
+  function sameNormalizedSet(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    const norm = (arr) => arr.map(normalize).sort();
+    const an = norm(a), bn = norm(b);
+    return an.every((v, i) => v === bn[i]);
+  }
+
   // --- Word list ---
 
   async function loadWords() {
@@ -500,6 +509,7 @@
       const validation = await api("POST", "/api/words/validate", {
         word: german,
         context_note,
+        variants,
       });
 
       addWordBtn.classList.remove("btn-loading");
@@ -510,10 +520,27 @@
         return;
       }
 
-      let finalWord = validation.corrected || german;
-      if (finalWord !== german) {
+      const finalWord = validation.corrected || german;
+      const finalVariants = Array.isArray(validation.corrected_variants)
+        ? validation.corrected_variants
+        : variants;
+
+      // Trivial = only case/umlaut/ß differences (handled by normalize()).
+      const mainTrivial = normalize(finalWord) === normalize(german);
+      const variantsTrivial = sameNormalizedSet(variants, finalVariants);
+
+      if (!mainTrivial || !variantsTrivial) {
+        const lines = [];
+        if (!mainTrivial) {
+          lines.push(`Did you mean "${finalWord}"?`);
+          if (validation.correction_note) lines.push(validation.correction_note);
+        }
+        if (!variantsTrivial) {
+          lines.push(`Variants: ${finalVariants.length ? finalVariants.join(", ") : "(none)"}`);
+          if (validation.variants_note) lines.push(validation.variants_note);
+        }
         const accept = await showConfirm(
-          `Did you mean "${finalWord}"?\n\n${validation.correction_note || "Spelling/capitalization was corrected."}`,
+          lines.join("\n\n"),
           "Yes, use this", "No, cancel"
         );
         if (!accept) {
@@ -525,7 +552,7 @@
       const newWord = await api("POST", "/api/words", {
         german: finalWord,
         context_note,
-        variants,
+        variants: finalVariants,
         german_definition: validation.german_definition || "",
         english_translation: validation.english_translation || "",
         article: validation.article || "",

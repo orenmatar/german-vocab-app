@@ -283,6 +283,7 @@ def validate_word():
     body = request.get_json()
     word = body.get("word", "").strip()
     context_note = body.get("context_note", "").strip()
+    variants = _clean_variants(body.get("variants", []))
 
     if not word:
         return jsonify({"error": "Word is required."}), 400
@@ -290,7 +291,10 @@ def validate_word():
     prompt_path = PROMPTS_DIR / "validate_word.txt"
     system_prompt = prompt_path.read_text(encoding="utf-8")
 
-    user_prompt = json.dumps({"word": word, "context_note": context_note}, ensure_ascii=False)
+    user_prompt = json.dumps(
+        {"word": word, "context_note": context_note, "variants": variants},
+        ensure_ascii=False,
+    )
 
     try:
         response_text = call_llm(system_prompt, user_prompt)
