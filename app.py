@@ -135,28 +135,49 @@ def _normalize_de(s):
     return s.lower().replace("ä", "a").replace("ö", "o").replace("ü", "u").replace("ß", "ss")
 
 
-def _is_plausible_form(word, candidate):
+def _clean_variants(raw):
+    """Coerce raw variants input (list or comma-separated string) into a deduped list of trimmed strings."""
+    if isinstance(raw, str):
+        items = raw.split(",")
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return []
+    seen = []
+    for item in items:
+        s = str(item).strip()
+        if s and s not in seen:
+            seen.append(s)
+    return seen
+
+
+def _is_plausible_form(word, candidate, variants=None):
     """Check if candidate could plausibly be a conjugated/declined form of word.
 
     Uses 3-char substring matching with umlaut normalization.
     Returns True if they share any 3-char substring, or if one contains the other.
     For separable verbs (candidate has " / "), checks each part separately.
+    If variants is provided, the candidate may also be a form of any variant.
     """
-    w = _normalize_de(word)
+    accepted = [word] + list(variants or [])
 
     # Handle separable verb notation: "fange / an"
     parts = [p.strip() for p in candidate.split(" / ")] if " / " in candidate else [candidate]
 
-    for part in parts:
-        c = _normalize_de(part)
-        # Direct containment
-        if w in c or c in w:
-            return True
-        # Shared 3-char substring
-        check_len = min(3, len(w))
-        for i in range(len(w) - check_len + 1):
-            if w[i:i + check_len] in c:
+    for accept in accepted:
+        if not accept:
+            continue
+        w = _normalize_de(accept)
+        for part in parts:
+            c = _normalize_de(part)
+            # Direct containment
+            if w in c or c in w:
                 return True
+            # Shared 3-char substring
+            check_len = min(3, len(w))
+            for i in range(len(w) - check_len + 1):
+                if w[i:i + check_len] in c:
+                    return True
 
     return False
 
@@ -194,6 +215,10 @@ def index():
 
 @app.route("/api/words", methods=["GET"])
 def get_words():
+    # Backfill optional fields so older entries always serialize with them
+    for w in data["words"]:
+        if "variants" not in w:
+            w["variants"] = []
     return jsonify(data["words"])
 
 
@@ -211,6 +236,7 @@ def add_word():
     word = {
         "german": german,
         "context_note": body.get("context_note", "").strip(),
+        "variants": _clean_variants(body.get("variants", [])),
         "german_definition": body.get("german_definition", "").strip(),
         "english_translation": body.get("english_translation", "").strip(),
         "article": body.get("article", "").strip(),
@@ -283,6 +309,10 @@ def patch_word(german):
         return jsonify({"error": f"'{german}' not found."}), 404
     if "starred" in body:
         word["starred"] = bool(body["starred"])
+    if "context_note" in body:
+        word["context_note"] = str(body["context_note"]).strip()
+    if "variants" in body:
+        word["variants"] = _clean_variants(body["variants"])
     save_data(data)
     return jsonify(word)
 
@@ -362,6 +392,7 @@ def practice_batch():
             "german_definition": word.get("german_definition", ""),
             "article": word.get("article", ""),
             "plural": word.get("plural", ""),
+            "variants": word.get("variants", []),
         }
         if i in grammar_assignments:
             entry["grammar_hint"] = grammar_assignments[i]
@@ -403,17 +434,20 @@ def practice_batch():
         if not s:
             continue
 
+        variants = word.get("variants", [])
+
         # Validate word_in_sentence — LLM sometimes confuses grammar hint
         # elements with the target word. Fall back to the word itself if bad.
+        # Variants are accepted forms too.
         word_in_sentence = s.get("word_in_sentence", german)
-        if not _is_plausible_form(german, word_in_sentence):
+        if not _is_plausible_form(german, word_in_sentence, variants):
             word_in_sentence = german
 
-        # Validate blank_answer — if it's not a form of the target word,
-        # the blank is wrong. Demote to comprehension mode.
+        # Validate blank_answer — if it's not a form of the target word
+        # (or one of its variants), the blank is wrong. Demote to comprehension.
         blank_answer = s.get("blank_answer", german)
         if mode == "multiple_choice":
-            if not _is_plausible_form(german, blank_answer):
+            if not _is_plausible_form(german, blank_answer, variants):
                 mode = "comprehension"
 
         item = {
@@ -429,6 +463,7 @@ def practice_batch():
             "plural": word.get("plural", ""),
             "preteritum": word.get("preteritum", ""),
             "partizip2": word.get("partizip2", ""),
+            "variants": word.get("variants", []),
             "word_in_sentence": word_in_sentence,
             "grammar_note": s.get("grammar_note", ""),
         }
@@ -485,6 +520,7 @@ def practice_passage():
             "english_translation": w.get("english_translation", ""),
             "article": w.get("article", ""),
             "plural": w.get("plural", ""),
+            "variants": w.get("variants", []),
         }
         for w in candidates
     ]
@@ -520,6 +556,7 @@ def practice_passage():
         wu["english_translation"] = meta.get("english_translation", "")
         wu["preteritum"] = meta.get("preteritum", "")
         wu["partizip2"] = meta.get("partizip2", "")
+        wu["variants"] = meta.get("variants", [])
 
     return jsonify(result)
 
@@ -554,6 +591,7 @@ def practice_writing_setup():
             "plural": w.get("plural", ""),
             "preteritum": w.get("preteritum", ""),
             "partizip2": w.get("partizip2", ""),
+            "variants": w.get("variants", []),
             "german_definition": w.get("german_definition", ""),
             "english_translation": w.get("english_translation", ""),
         }

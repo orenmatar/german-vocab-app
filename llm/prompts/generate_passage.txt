@@ -8,6 +8,7 @@ You will receive a JSON object with:
   - "english_translation": optional English translation (may be empty)
   - "article": "der"/"die"/"das" if it's a noun, empty otherwise
   - "plural": the plural form if it's a noun, empty otherwise
+  - "variants": optional array of related forms the learner wants practiced together (e.g. for "Dreck" → ["dreckig"], for "Gestank" → ["stinken"]). May be empty.
 - "grammar_hints": an array of grammar instruction strings (may be empty)
 
 Your task:
@@ -20,8 +21,9 @@ IMPORTANT RULES:
 - Write the passage as connected paragraphs (separate them with a blank line, i.e. "\n\n").
 - B1–B2 level: clear sentences, some subordinate clauses, varied tenses (Präsens, Perfekt, Präteritum), natural vocabulary.
 - Each word you use must appear as a natural inflected/declined/conjugated form in the text.
+- If a word has "variants", you MAY use any variant in place of the headword (e.g. for word "Dreck" with variants ["dreckig"], you can use "dreckig"/"dreckige" in the text). The "form" you report should be whichever variant you actually used (declined/conjugated as it appears).
 - Track exactly which "form" (the exact text as it appears in the passage) corresponds to which "word" (the dictionary form from input).
-- For each word used, provide BOTH the dictionary form ("word") and the exact form as it appears in the text ("form"). These may differ (e.g., word: "kaufen", form: "gekauft"; word: "Haus", form: "Häuser").
+- For each word used, provide BOTH the dictionary form ("word", which must match the input headword exactly — even if you used a variant in the text) and the exact form as it appears in the text ("form"). These may differ (e.g., word: "kaufen", form: "gekauft"; word: "Haus", form: "Häuser"; word: "Dreck", form: "dreckigen").
 - Grammar notes should briefly explain (in English) where and how the grammar hint appears in the text.
 
 Return ONLY a valid JSON object with exactly these fields:

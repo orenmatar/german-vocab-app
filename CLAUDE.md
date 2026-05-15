@@ -57,7 +57,8 @@ Each word in `words.json` has:
 - `english_translation`
 - `box` — Leitner box 1–5
 - `starred` — bool, user-marked important word; gets 2× weight boost in selection (default false; old words without this field treated as false)
-- `context_note` — optional user hint at add time
+- `context_note` — optional user hint at add time (editable post-hoc; see Edit Word modal)
+- `variants` — optional list of related forms the user wants practiced together (e.g. `Dreck` with `["dreckig"]`, `Gestank` with `["stinken"]`). Passed to sentence/passage generation prompts; the LLM may use a variant in place of the headword in any given sentence. `_is_plausible_form()` accepts variants when validating `word_in_sentence` and `blank_answer`. Backfilled to `[]` on read for old entries.
 - `added_at` — ISO timestamp of when word was added
 - `times_seen` — total number of practice rounds this word has appeared in
 - `times_correct` — total correct answers
@@ -120,6 +121,9 @@ Two quality tiers, both providers:
 After the word reveal in sentence practice (comprehension + MC), and on the passage review screen, each word card shows ★ and ✕ buttons so the user can star or delete a word without leaving the session.
 - **Star**: immediate PATCH to backend, updates `words` array and button state in place.
 - **Delete**: confirm dialog → DELETE to backend → word removed from `words` array → session continues safely (deleted words skipped going forward).
+
+## Edit Word Modal
+Each row in the Words list has a ✎ pencil button that opens a modal to edit `context_note` and `variants` (comma-separated text → list). PATCH `/api/words/<path:german>` accepts both fields (in addition to `starred`). Used for words added before variants existed, or to add a hint after first practicing.
 
 ## Words Page — Statistics Bar
 Above the word list, a row of stat tiles shows:

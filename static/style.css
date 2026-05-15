@@ -1405,6 +1405,78 @@ body {
     justify-content: flex-end;
 }
 
+/* Edit word modal */
+
+#edit-word-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-word-box {
+    max-width: 460px;
+}
+
+.edit-word-title {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    margin: 0 0 16px;
+    color: var(--text);
+}
+
+.edit-word-title span {
+    color: var(--accent);
+}
+
+.edit-field-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin: 12px 0 4px;
+}
+
+.edit-field-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    background: var(--bg-card);
+    color: var(--text);
+}
+
+.edit-field-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.edit-field-help {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin: 8px 0 18px;
+    line-height: 1.45;
+}
+
+.word-variants {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.wc-variants {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.wc-variants-label {
+    font-style: italic;
+}
+
 /* Word popup */
 
 #word-popup {

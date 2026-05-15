@@ -33,6 +33,7 @@
                     <div class="form-row">
                         <input type="text" id="new-word" placeholder="German word or phrase..." autocomplete="off">
                         <input type="text" id="new-context" placeholder="Context note (optional)..." autocomplete="off">
+                        <input type="text" id="new-variants" placeholder="Variants (optional, comma-separated, e.g. dreckig, drecken)..." autocomplete="off">
                         <button id="add-word-btn" class="btn btn-primary">Add</button>
                     </div>
                 </div>
@@ -490,6 +491,23 @@
             <div class="modal-btns">
                 <button id="modal-cancel" class="btn btn-ghost">Cancel</button>
                 <button id="modal-ok" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit word modal -->
+    <div id="edit-word-modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-box edit-word-box">
+            <h3 class="edit-word-title">Edit <span id="edit-word-name"></span></h3>
+            <label class="edit-field-label" for="edit-context">Context note</label>
+            <input type="text" id="edit-context" class="edit-field-input" placeholder="Hint about meaning or usage...">
+            <label class="edit-field-label" for="edit-variants">Variants (comma-separated)</label>
+            <input type="text" id="edit-variants" class="edit-field-input" placeholder="e.g. dreckig, drecken">
+            <p class="edit-field-help">Variants are related forms (other parts of speech, alternate forms) the AI may use in sentences instead of the headword.</p>
+            <div class="modal-btns">
+                <button id="edit-word-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="edit-word-save" class="btn btn-primary">Save</button>
             </div>
         </div>
     </div>

@@ -6,6 +6,7 @@ You will receive a JSON array of objects, each with:
 - "german_definition": optional German definition for disambiguation (may be empty)
 - "article": "der"/"die"/"das" if it's a noun, empty otherwise
 - "plural": the plural form if it's a noun (e.g. "Häuser" for "Haus"), empty otherwise
+- "variants": optional array of related word forms the learner wants to practice together (e.g. for "Dreck" the variants might be ["dreckig"]; for "Gestank" they might be ["stinken"]). May be empty. See VARIANTS section below.
 - "grammar_hint": optional grammar instruction (may be empty). If present, the sentence MUST follow this grammar hint. See GRAMMAR HINTS section below.
 
 For each item, generate ONE German sentence that uses the word/phrase naturally, plus its English translation, plus a version with the target replaced by "_____".
@@ -40,16 +41,25 @@ PHRASE SUPPORT:
 - For separable verbs (e.g. "anfangen"), the parts may be separated in the sentence. In blank_sentence, replace BOTH parts: "Wir _____ morgen mit dem Projekt _____." is WRONG. Instead, construct the sentence so you can blank a contiguous piece, OR blank just the most distinctive part (usually the prefix or the base verb, whichever is more recognizable).
 - For separable verbs: prefer using them in subordinate clauses where they stay together (e.g. "..., weil wir morgen _____" for "anfangen").
 
+VARIANTS:
+- "variants" is a list of related forms (different parts of speech from the same root, or close synonyms) that the learner wants to practice as one unit.
+- Examples: word "Dreck" with variants ["dreckig"] — noun + adjective. Word "Gestank" with variants ["stinken"] — noun + verb. Word "Hilfe" with variants ["helfen"] — noun + verb.
+- When variants are provided, you MAY use either the headword OR any variant in the sentence. Pick whichever fits more naturally for the sentence you want to write.
+- "word_in_sentence" and "blank_answer" must be a form of WHICHEVER ONE you used (headword OR a variant) — they don't have to be a form of the headword if you used a variant instead.
+- The "word" field in your output must still be the headword (the dictionary form from the input), so the system can match the response to the input entry.
+- Across a batch, variants give you flexibility — use them when the headword is awkward to fit (e.g., abstract noun) and a verb/adjective variant works better.
+
 BLANK RULES:
-- The blank MUST replace the TARGET WORD from the input — never any other word in the sentence. The blank_answer must always be a form of the input word.
+- The blank MUST replace the TARGET WORD from the input (or one of its variants if you chose to use a variant) — never any other unrelated word in the sentence. The blank_answer must always be a form of the input word OR a form of one of its variants.
 - WRONG: word is "ewig", but blank replaces "zu dauern" → NEVER do this. The blank must replace "ewig".
 - RIGHT: word is "ewig", blank replaces "ewig" → blank_answer is "ewig".
+- RIGHT (with variants): word is "Dreck", variants ["dreckig"], sentence uses "dreckig" → blank replaces "dreckig" → blank_answer is "dreckig" (or its declined form like "dreckige").
 - The blank_sentence must have exactly ONE "_____" (five underscores) replacing the target word/phrase.
 - For single words: replace exactly that word (in its conjugated/declined form as it appears).
 - For phrases: replace the entire phrase with one "_____".
-- The "word" field in your response must match the input exactly (the dictionary form, not the conjugated form).
+- The "word" field in your response must match the input headword exactly (not a variant; the system needs to match it back to the input).
 - The "blank_answer" field must contain the EXACT text that was replaced by "_____" — i.e. the conjugated/declined form as it appeared in the sentence. For example, if the word is "laufen" but the sentence uses "lief", blank_answer is "lief". If the word is "Haus" but the sentence uses "Häuser", blank_answer is "Häuser".
-- NEVER blank a word that is not a form of the input word. Double-check: is blank_answer a conjugated/declined/inflected form of the input word? If not, you made an error — fix it.
+- NEVER blank a word that is not a form of the input word OR a form of one of its variants. Double-check: is blank_answer a conjugated/declined/inflected form of the input word or a variant? If not, you made an error — fix it.
 
 GRAMMAR HINTS:
 - If "grammar_hint" is provided for a word, the generated sentence MUST incorporate that grammar instruction.

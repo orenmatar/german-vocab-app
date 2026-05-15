@@ -55,6 +55,7 @@
   // Word list
   const newWordInput = document.getElementById("new-word");
   const newContextInput = document.getElementById("new-context");
+  const newVariantsInput = document.getElementById("new-variants");
   const addWordBtn = document.getElementById("add-word-btn");
   const wordCountEl = document.getElementById("word-count");
   const wordListEl = document.getElementById("word-list");
@@ -292,6 +293,7 @@
       german_definition = "",
       english_translation = "",
       form_in_sentence = "",
+      variants = [],
     } = info;
 
     // Header: article + word + inflected form (if different)
@@ -318,7 +320,11 @@
       ? `<button class="wc-trans-btn">Show translation</button><div class="wc-translation" style="display:none">${escHtml(english_translation)}</div>`
       : "";
 
-    return `<div class="word-card">${headerHtml}${supsHtml}${defHtml}${transHtml}</div>`;
+    const variantsHtml = (variants && variants.length)
+      ? `<div class="wc-variants"><span class="wc-variants-label">also:</span> ${escHtml(variants.join(", "))}</div>`
+      : "";
+
+    return `<div class="word-card">${headerHtml}${supsHtml}${variantsHtml}${defHtml}${transHtml}</div>`;
   }
 
   // Builds star + delete mini-buttons for use inside practice sessions
@@ -418,6 +424,9 @@
         if (w.english_translation) detailParts.push(escHtml(w.english_translation));
         if (w.german_definition) detailParts.push(`<em>${escHtml(w.german_definition)}</em>`);
         if (w.context_note) detailParts.push(`(${escHtml(w.context_note)})`);
+        if (w.variants && w.variants.length) {
+          detailParts.push(`<span class="word-variants">also: ${escHtml(w.variants.join(", "))}</span>`);
+        }
         const detailsHtml = detailParts.length
           ? `<div class="word-item-details">${detailParts.join(" &mdash; ")}</div>`
           : "";
@@ -433,6 +442,7 @@
             <span class="word-stats">${w.times_correct}/${w.times_seen} correct</span>
             <span class="word-actions">
               <button class="${starClass}" onclick="toggleStar('${escAttr(w.german)}')" title="${starTitle}">&#9733;</button>
+              <button class="btn-edit" onclick="openEditWord('${escAttr(w.german)}')" title="Edit context &amp; variants">&#9998;</button>
               <button class="btn-reset-box" onclick="resetWordBox('${escAttr(w.german)}')" title="Reset to box 1">↺</button>
               <button class="btn-delete" onclick="deleteWord('${escAttr(w.german)}')" title="Delete">&#x2715;</button>
             </span>
@@ -453,6 +463,16 @@
     return s.replace(/'/g, "\\'").replace(/"/g, "&quot;");
   }
 
+  function parseVariantsInput(raw) {
+    if (!raw) return [];
+    const out = [];
+    raw.split(",").forEach((piece) => {
+      const v = piece.trim();
+      if (v && !out.includes(v)) out.push(v);
+    });
+    return out;
+  }
+
   // Add word
   let isAddingWord = false;
 
@@ -468,6 +488,7 @@
 
     isAddingWord = true;
     const context_note = newContextInput.value.trim();
+    const variants = parseVariantsInput(newVariantsInput ? newVariantsInput.value : "");
 
     try {
       addWordBtn.disabled = true;
@@ -501,6 +522,7 @@
       const newWord = await api("POST", "/api/words", {
         german: finalWord,
         context_note,
+        variants,
         german_definition: validation.german_definition || "",
         english_translation: validation.english_translation || "",
         article: validation.article || "",
@@ -514,6 +536,7 @@
       api("GET", "/api/words/stats").then(renderWordStats).catch(() => {});
       newWordInput.value = "";
       newContextInput.value = "";
+      if (newVariantsInput) newVariantsInput.value = "";
       newWordInput.focus();
     } catch (e) {
       addWordBtn.classList.remove("btn-loading");
@@ -548,6 +571,55 @@
     } catch (e) {
       await showAlert("Failed to update star: " + e.message);
     }
+  };
+
+  // --- Edit word modal ---
+  const editWordModal = document.getElementById("edit-word-modal");
+  const editWordName = document.getElementById("edit-word-name");
+  const editContextInput = document.getElementById("edit-context");
+  const editVariantsInput = document.getElementById("edit-variants");
+  const editWordSaveBtn = document.getElementById("edit-word-save");
+  const editWordCancelBtn = document.getElementById("edit-word-cancel");
+  let editingGerman = null;
+
+  function closeEditWord() {
+    editingGerman = null;
+    if (editWordModal) editWordModal.style.display = "none";
+  }
+
+  if (editWordCancelBtn) editWordCancelBtn.addEventListener("click", closeEditWord);
+
+  if (editWordSaveBtn) editWordSaveBtn.addEventListener("click", async () => {
+    if (!editingGerman) return;
+    const word = words.find((w) => w.german === editingGerman);
+    if (!word) { closeEditWord(); return; }
+    const newContext = editContextInput.value.trim();
+    const newVariants = parseVariantsInput(editVariantsInput.value);
+    try {
+      editWordSaveBtn.disabled = true;
+      const updated = await api("PATCH", `/api/words/${encodeURIComponent(editingGerman)}`, {
+        context_note: newContext,
+        variants: newVariants,
+      });
+      Object.assign(word, updated);
+      renderWords();
+      closeEditWord();
+    } catch (e) {
+      await showAlert("Failed to save: " + e.message);
+    } finally {
+      editWordSaveBtn.disabled = false;
+    }
+  });
+
+  window.openEditWord = function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word || !editWordModal) return;
+    editingGerman = german;
+    editWordName.textContent = (word.article ? word.article + " " : "") + word.german;
+    editContextInput.value = word.context_note || "";
+    editVariantsInput.value = (word.variants || []).join(", ");
+    editWordModal.style.display = "flex";
+    setTimeout(() => editContextInput.focus(), 50);
   };
 
   // Called from star/delete buttons inside sentence practice reveals
@@ -1006,6 +1078,7 @@
       plural: item.plural,
       preteritum: item.preteritum,
       partizip2: item.partizip2,
+      variants: item.variants || [],
       german_definition: item.german_definition,
       english_translation: item.english_translation,
       form_in_sentence: item.word_in_sentence,
@@ -1213,6 +1286,7 @@
       plural: item.plural,
       preteritum: item.preteritum,
       partizip2: item.partizip2,
+      variants: item.variants || [],
       german_definition: item.german_definition,
       english_translation: item.english_translation,
       form_in_sentence: inSentence,
@@ -1533,6 +1607,7 @@
       plural: wu.plural,
       preteritum: wu.preteritum,
       partizip2: wu.partizip2,
+      variants: wu.variants || [],
       german_definition: wu.german_definition,
       english_translation: wu.english_translation,
     });
@@ -1590,6 +1665,7 @@
                 plural: wu.plural,
                 preteritum: wu.preteritum,
                 partizip2: wu.partizip2,
+                variants: wu.variants || [],
                 german_definition: wu.german_definition,
                 english_translation: wu.english_translation,
               })}
@@ -1763,6 +1839,7 @@
       plural: wordObj.plural,
       preteritum: wordObj.preteritum,
       partizip2: wordObj.partizip2,
+      variants: wordObj.variants || [],
       german_definition: wordObj.german_definition,
       english_translation: wordObj.english_translation,
     });
