@@ -477,8 +477,11 @@
   let isAddingWord = false;
 
   addWordBtn.addEventListener("click", addWord);
-  newWordInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") addWord();
+  [newWordInput, newContextInput, newVariantsInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addWord();
+    });
   });
 
   async function addWord() {
