@@ -454,10 +454,22 @@ def practice_batch():
             if not _is_plausible_form(german, blank_answer, variants):
                 mode = "comprehension"
 
+        # Repair: occasionally the LLM puts the blank marker into the
+        # full sentence too. Substitute the target word back so the
+        # comprehension card actually shows the word.
+        sentence_text = s.get("sentence", "")
+        if "_____" in sentence_text:
+            replacement = blank_answer if blank_answer and "_____" not in blank_answer else word_in_sentence
+            if replacement and "_____" not in replacement:
+                sentence_text = sentence_text.replace("_____", replacement)
+        # If still unfillable, skip the item rather than show a broken card.
+        if "_____" in sentence_text:
+            continue
+
         item = {
             "german": german,
             "mode": mode,
-            "sentence": s.get("sentence", ""),
+            "sentence": sentence_text,
             "translation": s.get("translation", ""),
             "blank_sentence": s.get("blank_sentence", ""),
             "blank_answer": blank_answer,
