@@ -46,6 +46,7 @@
                     <span id="word-count">0 words</span>
                     <div class="sort-controls">
                         <button id="star-filter-btn" class="btn btn-ghost btn-small star-filter-btn" title="Show starred words only">&#9733; Starred</button>
+                        <button id="show-known-btn" class="btn btn-ghost btn-small star-filter-btn" title="Include known words in the list">&#10003; Show known</button>
                         <label>Sort by:</label>
                         <select id="sort-select">
                             <option value="added">Date Added</option>
@@ -505,6 +506,11 @@
             <label class="edit-field-label" for="edit-variants">Variants (comma-separated)</label>
             <input type="text" id="edit-variants" class="edit-field-input" placeholder="e.g. dreckig, drecken">
             <p class="edit-field-help">Variants are related forms (other parts of speech, alternate forms) the AI may use in sentences instead of the headword.</p>
+
+            <label class="edit-checkbox-row">
+                <input type="checkbox" id="edit-known">
+                <span>Mark as known (skip in practice, keep in DB)</span>
+            </label>
             <div class="modal-btns">
                 <button id="edit-word-cancel" class="btn btn-ghost">Cancel</button>
                 <button id="edit-word-save" class="btn btn-primary">Save</button>

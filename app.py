@@ -219,6 +219,8 @@ def get_words():
     for w in data["words"]:
         if "variants" not in w:
             w["variants"] = []
+        if "known" not in w:
+            w["known"] = False
     return jsonify(data["words"])
 
 
@@ -246,6 +248,7 @@ def add_word():
         "added_at": datetime.now().isoformat(),
         "box": 1,
         "starred": False,
+        "known": False,
         "times_seen": 0,
         "times_correct": 0,
         "last_seen": None,
@@ -265,12 +268,16 @@ def word_stats():
     words_list = data["words"]
     mastered_box = settings.get("MASTERED_BOX")
     total = len(words_list)
-    mastered = sum(1 for w in words_list if w.get("box", 1) >= mastered_box)
-    never_seen = sum(1 for w in words_list if w.get("times_seen", 0) == 0)
-    box1 = sum(1 for w in words_list if w.get("box", 1) == 1)
-    active = sum(1 for w in words_list if w.get("times_seen", 0) > 0 and w.get("box", 1) < mastered_box)
+    known = sum(1 for w in words_list if w.get("known"))
+    # Exclude known words from the practice-progress stats — they're retired.
+    practice_pool = [w for w in words_list if not w.get("known")]
+    mastered = sum(1 for w in practice_pool if w.get("box", 1) >= mastered_box)
+    never_seen = sum(1 for w in practice_pool if w.get("times_seen", 0) == 0)
+    box1 = sum(1 for w in practice_pool if w.get("box", 1) == 1)
+    active = sum(1 for w in practice_pool if w.get("times_seen", 0) > 0 and w.get("box", 1) < mastered_box)
     return jsonify({
         "total": total,
+        "known": known,
         "mastered": mastered,
         "active": active,
         "never_seen": never_seen,
@@ -313,6 +320,8 @@ def patch_word(german):
         return jsonify({"error": f"'{german}' not found."}), 404
     if "starred" in body:
         word["starred"] = bool(body["starred"])
+    if "known" in body:
+        word["known"] = bool(body["known"])
     if "context_note" in body:
         word["context_note"] = str(body["context_note"]).strip()
     if "variants" in body:
@@ -344,14 +353,15 @@ def reset_word_box(german):
 
 @app.route("/api/prep/sample", methods=["GET"])
 def prep_sample():
-    count = min(int(request.args.get("count", 15)), len(data["words"]))
+    pool = [w for w in data["words"] if not w.get("known")]
+    count = min(int(request.args.get("count", 15)), len(pool))
     if count == 0:
         return jsonify([])
     strategy = request.args.get("strategy", "weighted")
     if strategy == "random":
-        selected = random.sample(data["words"], count)
+        selected = random.sample(pool, count)
     else:
-        selected = weighted_sample(data["words"], count)
+        selected = weighted_sample(pool, count)
     return jsonify(selected)
 
 
@@ -360,7 +370,7 @@ def prep_replace():
     body = request.get_json()
     exclude = set(body.get("exclude", []))
     strategy = body.get("strategy", "weighted")
-    pool = [w for w in data["words"] if w["german"] not in exclude]
+    pool = [w for w in data["words"] if w["german"] not in exclude and not w.get("known")]
     if not pool:
         return jsonify({"error": "No more words available to swap in."}), 400
     if strategy == "random":
@@ -524,7 +534,10 @@ def practice_passage():
     if not data["words"]:
         return jsonify({"error": "No words added yet."}), 400
 
-    candidates = weighted_sample(data["words"], min(10, len(data["words"])))
+    pool = [w for w in data["words"] if not w.get("known")]
+    if not pool:
+        return jsonify({"error": "No active words — all your words are marked known."}), 400
+    candidates = weighted_sample(pool, min(10, len(pool)))
     enabled_grammar = [gp for gp in grammar_data["grammar_points"] if gp.get("enabled", True)]
     selected_grammar = random.sample(enabled_grammar, min(3, len(enabled_grammar)))
 
@@ -598,8 +611,11 @@ def practice_writing_setup():
             "examples": gp.get("examples", []),
         }
 
-    # Pick up to 10 suggested words (weighted sample)
-    candidates = weighted_sample(data["words"], min(10, len(data["words"])))
+    # Pick up to 10 suggested words (weighted sample, excluding known)
+    pool = [w for w in data["words"] if not w.get("known")]
+    if not pool:
+        return jsonify({"error": "No active words — all your words are marked known."}), 400
+    candidates = weighted_sample(pool, min(10, len(pool)))
     suggested_words = [
         {
             "german": w["german"],

@@ -19,6 +19,9 @@
 
   // Word list filter
   let filterStarred = false;
+  // showKnown: when false (default), known words are HIDDEN from the Words list.
+  // Toggling it on includes them, visually dimmed.
+  let showKnown = false;
 
   // Phrases
   let phrases = [];
@@ -61,6 +64,7 @@
   const wordListEl = document.getElementById("word-list");
   const sortSelect = document.getElementById("sort-select");
   const starFilterBtn = document.getElementById("star-filter-btn");
+  const showKnownBtn = document.getElementById("show-known-btn");
   const wordStatsEl = document.getElementById("word-stats");
 
   // Phrases
@@ -327,14 +331,22 @@
     return `<div class="word-card">${headerHtml}${supsHtml}${variantsHtml}${defHtml}${transHtml}</div>`;
   }
 
-  // Builds star + delete mini-buttons for use inside practice sessions
+  // Builds star + known + delete mini-buttons for use inside practice sessions
   function buildPracticeActions(german, opts = {}) {
-    const { starFn = "practiceToggleStar", deleteFn = "practiceDeleteWord" } = opts;
+    const {
+      starFn = "practiceToggleStar",
+      knownFn = "practiceToggleKnown",
+      deleteFn = "practiceDeleteWord",
+    } = opts;
     const word = words.find((w) => w.german === german);
     const starred = word ? !!word.starred : false;
+    const known = word ? !!word.known : false;
     const starClass = starred ? "btn-star starred" : "btn-star";
     const starTitle = starred ? "Unstar this word" : "Star this word";
+    const knownClass = known ? "btn-known known" : "btn-known";
+    const knownTitle = known ? "Marked known — unmark to bring back into practice" : "Mark as known (skip in future practice)";
     return `<button class="${starClass}" onclick="${starFn}('${escAttr(german)}')" title="${starTitle}">&#9733;</button>`
+      + `<button class="${knownClass}" onclick="${knownFn}('${escAttr(german)}')" title="${knownTitle}">&#10003;</button>`
       + `<button class="btn-delete" onclick="${deleteFn}('${escAttr(german)}')" title="Delete word">&#x2715;</button>`;
   }
 
@@ -384,12 +396,15 @@
     if (!s || s.total === 0) { wordStatsEl.style.display = "none"; return; }
     const tile = (num, label, cls = "") =>
       `<div class="stat-tile"><span class="stat-tile-num ${cls}">${num}</span><span class="stat-tile-label">${label}</span></div>`;
+    const practicePool = Math.max(0, s.total - (s.known || 0));
+    const masteredPct = practicePool > 0 ? Math.round(s.mastered / practicePool * 100) + "%" : "0%";
     wordStatsEl.innerHTML =
       tile(s.mastered, "mastered", "stat-mastered") +
       tile(s.active, "in progress") +
       tile(s.never_seen, "never seen", "stat-new") +
       tile(s.box1, "box 1 only", "stat-box1") +
-      tile(s.total > 0 ? Math.round(s.mastered / s.total * 100) + "%" : "0%", "mastered %", "stat-mastered");
+      tile(masteredPct, "mastered %", "stat-mastered") +
+      (s.known ? tile(s.known, "known", "stat-known") : "");
     wordStatsEl.style.display = "flex";
   }
 
@@ -405,12 +420,14 @@
       sorted.sort((a, b) => (b.added_at || "").localeCompare(a.added_at || ""));
     }
 
-    // Apply starred filter
-    const displayed = filterStarred ? sorted.filter((w) => w.starred) : sorted;
+    // Hide known by default; toggle includes them (dimmed).
+    let displayed = showKnown ? sorted : sorted.filter((w) => !w.known);
+    if (filterStarred) displayed = displayed.filter((w) => w.starred);
 
+    const visibleTotal = showKnown ? words.length : words.filter((w) => !w.known).length;
     const countLabel = filterStarred
-      ? `${displayed.length} starred / ${words.length} total`
-      : `${words.length} item${words.length !== 1 ? "s" : ""}`;
+      ? `${displayed.length} starred / ${visibleTotal} shown`
+      : `${displayed.length} item${displayed.length !== 1 ? "s" : ""}` + (showKnown ? "" : ` (+${words.length - visibleTotal} known hidden)`);
     wordCountEl.textContent = countLabel;
 
     if (displayed.length === 0) {
@@ -442,15 +459,20 @@
 
         const starClass = w.starred ? "btn-star starred" : "btn-star";
         const starTitle = w.starred ? "Unstar this word" : "Star this word (prioritises it in practice)";
+        const knownClass = w.known ? "btn-known known" : "btn-known";
+        const knownTitle = w.known ? "Marked known — unmark to bring back into practice" : "Mark as known (skip in practice, keep in DB)";
+        const rowClass = w.known ? "word-item fade-in word-item--known" : "word-item fade-in";
+        const knownBadge = w.known ? '<span class="word-known-badge" title="Known — skipped in practice">known</span>' : "";
 
         return `
-        <div class="word-item fade-in">
+        <div class="${rowClass}">
           <div class="word-item-main">
-            <span class="word-german"><span class="word-article">${articlePrefix}</span>${escHtml(w.german)}${pluralSuffix}</span>
+            <span class="word-german"><span class="word-article">${articlePrefix}</span>${escHtml(w.german)}${pluralSuffix}${knownBadge}</span>
             <span class="word-box">${dots}</span>
             <span class="word-stats">${w.times_correct}/${w.times_seen} correct</span>
             <span class="word-actions">
               <button class="${starClass}" onclick="toggleStar('${escAttr(w.german)}')" title="${starTitle}">&#9733;</button>
+              <button class="${knownClass}" onclick="toggleKnown('${escAttr(w.german)}')" title="${knownTitle}">&#10003;</button>
               <button class="btn-edit" onclick="openEditWord('${escAttr(w.german)}')" title="Edit context &amp; variants">&#9998;</button>
               <button class="btn-reset-box" onclick="resetWordBox('${escAttr(w.german)}')" title="Reset to box 1">↺</button>
               <button class="btn-delete" onclick="deleteWord('${escAttr(w.german)}')" title="Delete">&#x2715;</button>
@@ -603,11 +625,26 @@
     }
   };
 
+  window.toggleKnown = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newKnown = !word.known;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { known: newKnown });
+      word.known = newKnown;
+      renderWords();
+      api("GET", "/api/words/stats").then(renderWordStats).catch(() => {});
+    } catch (e) {
+      await showAlert("Failed to update: " + e.message);
+    }
+  };
+
   // --- Edit word modal ---
   const editWordModal = document.getElementById("edit-word-modal");
   const editWordName = document.getElementById("edit-word-name");
   const editContextInput = document.getElementById("edit-context");
   const editVariantsInput = document.getElementById("edit-variants");
+  const editKnownInput = document.getElementById("edit-known");
   const editWordSaveBtn = document.getElementById("edit-word-save");
   const editWordCancelBtn = document.getElementById("edit-word-cancel");
   let editingGerman = null;
@@ -625,14 +662,17 @@
     if (!word) { closeEditWord(); return; }
     const newContext = editContextInput.value.trim();
     const newVariants = parseVariantsInput(editVariantsInput.value);
+    const newKnown = editKnownInput ? !!editKnownInput.checked : !!word.known;
     try {
       editWordSaveBtn.disabled = true;
       const updated = await api("PATCH", `/api/words/${encodeURIComponent(editingGerman)}`, {
         context_note: newContext,
         variants: newVariants,
+        known: newKnown,
       });
       Object.assign(word, updated);
       renderWords();
+      api("GET", "/api/words/stats").then(renderWordStats).catch(() => {});
       closeEditWord();
     } catch (e) {
       await showAlert("Failed to save: " + e.message);
@@ -648,6 +688,7 @@
     editWordName.textContent = (word.article ? word.article + " " : "") + word.german;
     editContextInput.value = word.context_note || "";
     editVariantsInput.value = (word.variants || []).join(", ");
+    if (editKnownInput) editKnownInput.checked = !!word.known;
     editWordModal.style.display = "flex";
     setTimeout(() => editContextInput.focus(), 50);
   };
@@ -688,6 +729,26 @@
     }
   };
 
+  window.practiceToggleKnown = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newKnown = !word.known;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { known: newKnown });
+      word.known = newKnown;
+      // When marking known, skip future occurrences in this batch (same as delete pattern).
+      if (newKnown) deletedDuringSession.add(german);
+      else deletedDuringSession.delete(german);
+      [compWordActions, mcWordActions].forEach((el) => {
+        if (el && el.style.display !== "none") {
+          el.innerHTML = buildPracticeActions(german);
+        }
+      });
+    } catch (e) {
+      await showAlert("Failed to update: " + e.message);
+    }
+  };
+
   sortSelect.addEventListener("change", renderWords);
 
   starFilterBtn.addEventListener("click", () => {
@@ -695,6 +756,14 @@
     starFilterBtn.classList.toggle("active", filterStarred);
     renderWords();
   });
+
+  if (showKnownBtn) {
+    showKnownBtn.addEventListener("click", () => {
+      showKnown = !showKnown;
+      showKnownBtn.classList.toggle("active", showKnown);
+      renderWords();
+    });
+  }
 
   // --- Phrases ---
 
@@ -1704,7 +1773,7 @@
               <button class="btn btn-knew" data-word="${escAttr(wu.word)}" data-correct="true">&#10003; Knew it</button>
               <button class="btn btn-didnt" data-word="${escAttr(wu.word)}" data-correct="false">&#10007; Didn't know</button>
               <span class="passage-btns-sep">|</span>
-              ${buildPracticeActions(wu.word, { starFn: "passageReviewToggleStar", deleteFn: "passageReviewDeleteWord" })}
+              ${buildPracticeActions(wu.word, { starFn: "passageReviewToggleStar", knownFn: "passageReviewToggleKnown", deleteFn: "passageReviewDeleteWord" })}
             </div>
           </div>`)
       .join("");
@@ -1757,6 +1826,34 @@
       if (card) card.classList.add("pr-deleted");
     } catch (e) {
       await showAlert("Failed to delete: " + e.message);
+    }
+  };
+
+  window.passageReviewToggleKnown = async function (german) {
+    const word = words.find((w) => w.german === german);
+    if (!word) return;
+    const newKnown = !word.known;
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { known: newKnown });
+      word.known = newKnown;
+      // When marking known, skip recording a practice result for this word on Finish.
+      if (newKnown) passageDeletedWords.add(german);
+      else passageDeletedWords.delete(german);
+      const card = document.getElementById(`prcard-${escAttr(german)}`);
+      if (card) {
+        const btnRow = card.querySelector(".passage-card-btns");
+        if (btnRow) {
+          const oldActions = btnRow.querySelectorAll(".btn-star, .btn-known, .btn-delete");
+          oldActions.forEach((b) => b.remove());
+          btnRow.insertAdjacentHTML("beforeend",
+            buildPracticeActions(german, { starFn: "passageReviewToggleStar", knownFn: "passageReviewToggleKnown", deleteFn: "passageReviewDeleteWord" })
+          );
+        }
+        if (newKnown) card.classList.add("pr-deleted");
+        else card.classList.remove("pr-deleted");
+      }
+    } catch (e) {
+      await showAlert("Failed to update: " + e.message);
     }
   };
 
@@ -2283,6 +2380,7 @@
         <span class="prep-card-num">${num}.</span>
         <div class="prep-card-topbar-right">
           <button class="${isStarred ? "btn-star starred" : "btn-star"}" onclick="prepToggleStar('${g}')" title="${isStarred ? "Unstar" : "Star"}">&#9733;</button>
+          <button class="btn-known" onclick="prepMarkKnown('${g}')" title="Mark as known (removes from this prep batch)">&#10003;</button>
           <button class="btn-reset-box" onclick="prepResetBox('${g}')" title="Reset to box 1">↺</button>
           <button class="btn-delete" onclick="prepDeleteWord('${g}')" title="Delete from word list">&#x2715;</button>
         </div>
@@ -2348,6 +2446,19 @@
       renderPrepList();
     } catch (e) {
       await showAlert(e.message);
+    }
+  };
+
+  window.prepMarkKnown = async function (german) {
+    try {
+      await api("PATCH", `/api/words/${encodeURIComponent(german)}`, { known: true });
+      const inList = words.find((x) => x.german === german);
+      if (inList) inList.known = true;
+      prepBatch = prepBatch.filter((w) => w.german !== german);
+      prepLocked.delete(german);
+      renderPrepList();
+    } catch (e) {
+      await showAlert("Failed to update: " + e.message);
     }
   };
 

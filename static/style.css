@@ -1163,6 +1163,68 @@ body {
     color: var(--accent);
 }
 
+/* Known toggle button */
+.btn-known {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.btn-known:hover {
+    background: var(--correct-bg);
+    color: var(--correct);
+}
+
+.btn-known.known {
+    color: var(--correct);
+    background: var(--correct-bg);
+    border-color: var(--correct);
+}
+
+.word-item--known {
+    opacity: 0.55;
+}
+
+.word-item--known:hover {
+    opacity: 1;
+}
+
+.word-known-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--correct);
+    background: var(--correct-bg);
+    border: 1px solid var(--correct);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stat-known {
+    color: var(--correct) !important;
+}
+
+/* "Mark as known" inside practice surfaces */
+.practice-word-actions .btn-known {
+    border-color: var(--border);
+}
+
+.practice-word-known {
+    color: var(--correct);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
 /* --- Grammar toggle --- */
 
 .grammar-toggle {
@@ -1460,6 +1522,23 @@ body {
     color: var(--text-light);
     margin: 8px 0 18px;
     line-height: 1.45;
+}
+
+.edit-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 18px;
+    font-size: 0.9rem;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.edit-checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
 }
 
 .word-variants {

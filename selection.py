@@ -143,6 +143,11 @@ def select_words(words, count=None):
     if not words:
         return []
 
+    # Exclude words the user has marked as "known" — they're retired from practice.
+    words = [w for w in words if not w.get("known")]
+    if not words:
+        return []
+
     if count is None:
         count = settings.get("BATCH_SIZE")
     count = min(count, len(words))

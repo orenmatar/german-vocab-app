@@ -57,6 +57,7 @@ Each word in `words.json` has:
 - `english_translation`
 - `box` — Leitner box 1–5
 - `starred` — bool, user-marked important word; gets 2× weight boost in selection (default false; old words without this field treated as false)
+- `known` — bool, user-marked as "already know this — skip in practice". When true the word is excluded from all selection pools (sentence batch, reading passage, writing setup, prep sample/replace) but stays in the DB with full history. Backfilled to `false` on read; no migration needed. Stats endpoint reports a separate `known` count and excludes them from active/mastered/never_seen/box1. Toggleable from: Words list ✓ button, Edit modal checkbox, in-practice actions (sentence + passage + prep).
 - `context_note` — optional user hint at add time (editable post-hoc; see Edit Word modal)
 - `variants` — optional list of related forms the user wants practiced together (e.g. `Dreck` with `["dreckig"]`, `Gestank` with `["stinken"]`). Passed to sentence/passage generation prompts; the LLM may use a variant in place of the headword in any given sentence. `_is_plausible_form()` accepts variants when validating `word_in_sentence` and `blank_answer`. Backfilled to `[]` on read for old entries.
 - `added_at` — ISO timestamp of when word was added
@@ -136,8 +137,9 @@ Above the word list, a row of stat tiles shows:
 - **In progress** — `times_seen > 0` and not yet mastered
 - **Never seen** (grey) — `times_seen == 0`, words added but never practiced
 - **Box 1 only** (red) — still at box 1
-- **Accuracy %** — overall `times_correct / times_seen` across all words
-Stats are fetched from `/api/words/stats` and refresh on add/delete.
+- **Mastered %** — `mastered / (total - known)` (so retiring known words doesn't deflate the percentage)
+- **Known** (green) — only shown when there's at least one known word
+Stats are fetched from `/api/words/stats` and refresh on add/delete/toggle-known. The practice-progress counts (mastered/active/never_seen/box1) exclude known words.
 
 ## Prep Tab
 A "Conversation Prep" tab for sampling words to review before social situations.
