@@ -425,9 +425,10 @@
     if (filterStarred) displayed = displayed.filter((w) => w.starred);
 
     const visibleTotal = showKnown ? words.length : words.filter((w) => !w.known).length;
+    const knownHidden = words.length - visibleTotal;
     const countLabel = filterStarred
-      ? `${displayed.length} starred / ${visibleTotal} shown`
-      : `${displayed.length} item${displayed.length !== 1 ? "s" : ""}` + (showKnown ? "" : ` (+${words.length - visibleTotal} known hidden)`);
+      ? `${displayed.length} starred / ${visibleTotal}`
+      : `${displayed.length}` + (knownHidden > 0 && !showKnown ? ` (+${knownHidden} known)` : "");
     wordCountEl.textContent = countLabel;
 
     if (displayed.length === 0) {

@@ -42,10 +42,13 @@
                     <!-- Rendered by JS -->
                 </div>
 
+                <div class="word-list-utility">
+                    <button id="cleanup-db-btn" class="btn btn-ghost btn-small" title="Run a smart-LLM cleanup pass over your whole word list — merges duplicates, refreshes weak definitions, moves phrases, with confirmation before writing">&#x2728; Clean up DB</button>
+                </div>
+
                 <div class="word-list-header">
-                    <span id="word-count">0 words</span>
+                    <span id="word-count" class="word-count-text">0 words</span>
                     <div class="sort-controls">
-                        <button id="cleanup-db-btn" class="btn btn-ghost btn-small" title="Run a smart-LLM cleanup pass over your whole word list — merges duplicates, refreshes weak definitions, moves phrases, with confirmation before writing">&#x2728; Clean up DB</button>
                         <button id="star-filter-btn" class="btn btn-ghost btn-small star-filter-btn" title="Show starred words only">&#9733; Starred</button>
                         <button id="show-known-btn" class="btn btn-ghost btn-small star-filter-btn" title="Include known words in the list">&#10003; Show known</button>
                         <label>Sort by:</label>
