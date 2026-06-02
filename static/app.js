@@ -757,6 +757,103 @@
     renderWords();
   });
 
+  // --- DB Cleanup ---
+  const cleanupDbBtn = document.getElementById("cleanup-db-btn");
+  const cleanupModal = document.getElementById("cleanup-modal");
+  const cleanupStatus = document.getElementById("cleanup-status");
+  const cleanupSummary = document.getElementById("cleanup-summary");
+  const cleanupCountsEl = document.getElementById("cleanup-counts");
+  const cleanupSamplesEl = document.getElementById("cleanup-samples");
+  const cleanupCancelBtn = document.getElementById("cleanup-cancel");
+  const cleanupApplyBtn = document.getElementById("cleanup-apply");
+
+  function closeCleanupModal() {
+    if (cleanupModal) cleanupModal.style.display = "none";
+  }
+  if (cleanupCancelBtn) cleanupCancelBtn.addEventListener("click", closeCleanupModal);
+
+  if (cleanupDbBtn) cleanupDbBtn.addEventListener("click", async () => {
+    const ok = await showConfirm(
+      "Run a smart-LLM cleanup over your whole DB?\n\n" +
+      "This calls the smart LLM (slow + costs API credits) to:\n" +
+      "  - merge duplicate forms (Dreck + dreckig → one entry)\n" +
+      "  - refresh weak definitions with examples\n" +
+      "  - move phrases to the Phrases tab\n" +
+      "  - flag clearly invalid entries\n\n" +
+      "Nothing is written until you review and confirm.",
+      "Yes, propose changes", "Cancel"
+    );
+    if (!ok) return;
+    if (!cleanupModal) return;
+    cleanupModal.style.display = "flex";
+    cleanupStatus.textContent = "Running smart cleanup… this may take 1–3 minutes.";
+    cleanupStatus.style.display = "block";
+    cleanupSummary.style.display = "none";
+    cleanupApplyBtn.disabled = true;
+    try {
+      const proposal = await api("POST", "/api/words/cleanup-propose");
+      renderCleanupProposal(proposal);
+    } catch (e) {
+      cleanupStatus.textContent = "Failed: " + e.message;
+    }
+  });
+
+  function renderCleanupProposal(p) {
+    cleanupStatus.style.display = "none";
+    cleanupSummary.style.display = "block";
+    const c = p.phase1_counts || {};
+    cleanupCountsEl.innerHTML = [
+      ["Total words", p.input_word_count],
+      ["Kept as-is", c.keep || 0],
+      ["Merge into variants", c.merge || 0],
+      ["Move to phrases", c.to_phrase || 0],
+      ["Delete entirely", c.delete || 0],
+      ["Definitions refreshed", p.phase2_refresh_count || 0],
+    ].map(([k, v]) => `<div class="cleanup-count-row"><span>${k}</span><strong>${v}</strong></div>`).join("");
+
+    // Build samples from phase1_actions
+    const merges = (p.phase1_actions || []).filter((a) => a.action === "merge").slice(0, 8);
+    const phrases = (p.phase1_actions || []).filter((a) => a.action === "to_phrase").slice(0, 5);
+    const deletes = (p.phase1_actions || []).filter((a) => a.action === "delete").slice(0, 5);
+    const samples = [
+      ...merges.map((a) => `<div><span class="cleanup-action-merge">merge</span> ${escHtml(a.german)} → ${escHtml(a.into)}</div>`),
+      ...phrases.map((a) => `<div><span class="cleanup-action-phrase">→ phrase</span> ${escHtml(a.german)}</div>`),
+      ...deletes.map((a) => `<div><span class="cleanup-action-delete">delete</span> ${escHtml(a.german)} <span style="color:var(--text-light)">(${escHtml(a.reason || "")})</span></div>`),
+    ];
+    // Sample refresh diffs
+    const sampleRefreshes = p.sample_refreshes || {};
+    const refreshList = Object.entries(sampleRefreshes).slice(0, 4)
+      .map(([g, r]) => `<div><span style="color:var(--text-light)">def</span> ${escHtml(g)}: <em style="color:var(--text-light)">${escHtml((r.german_definition || "").slice(0, 110))}…</em></div>`);
+    cleanupSamplesEl.innerHTML = samples.concat(refreshList).join("") || "<em>No proposed changes.</em>";
+
+    cleanupApplyBtn.disabled = false;
+  }
+
+  if (cleanupApplyBtn) cleanupApplyBtn.addEventListener("click", async () => {
+    cleanupApplyBtn.disabled = true;
+    cleanupApplyBtn.textContent = "Applying…";
+    try {
+      const result = await api("POST", "/api/words/cleanup-apply");
+      const s = result.summary || {};
+      await showAlert(
+        `Cleanup applied.\n\n` +
+        `Kept: ${s.kept || 0}\n` +
+        `Merged away: ${s.merged_away || 0}\n` +
+        `Moved to phrases: ${s.moved_to_phrases || 0}\n` +
+        `Deleted: ${s.deleted || 0}\n` +
+        `Definitions refreshed: ${s.definitions_refreshed || 0}\n\n` +
+        `Backup suffix: ${result.backup_suffix}`
+      );
+      closeCleanupModal();
+      loadWords();
+    } catch (e) {
+      await showAlert("Apply failed: " + e.message);
+    } finally {
+      cleanupApplyBtn.disabled = false;
+      cleanupApplyBtn.textContent = "Apply";
+    }
+  });
+
   if (showKnownBtn) {
     showKnownBtn.addEventListener("click", () => {
       showKnown = !showKnown;

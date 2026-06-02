@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 from selection import select_words, update_box, select_grammar_for_batch, weighted_sample
 from llm.client import call_llm, parse_json_response, generate_tts_audio
+import cleanup as cleanup_module
 import settings
 
 load_dotenv()
@@ -28,6 +29,7 @@ DATA_FILE = Path(__file__).parent / "data" / "words.json"
 GRAMMAR_FILE = Path(__file__).parent / "data" / "grammar.json"
 MISTAKES_FILE = Path(__file__).parent / "data" / "mistakes.json"
 PHRASES_FILE = Path(__file__).parent / "data" / "phrases.json"
+CLEANUP_PROPOSAL_FILE = Path(__file__).parent / "data" / "cleanup_proposal.json"
 PROMPTS_DIR = Path(__file__).parent / "llm" / "prompts"
 
 # --- Auth ---
@@ -339,6 +341,51 @@ def delete_word(german):
     data["words"].remove(word)
     save_data(data)
     return jsonify({"ok": True})
+
+
+@app.route("/api/words/cleanup-propose", methods=["POST"])
+def cleanup_propose():
+    """
+    Phase 1 + Phase 2 of the smart-LLM cleanup. Builds a proposal and saves
+    it to data/cleanup_proposal.json. Returns the proposal summary.
+    Destructive write happens only when /api/words/cleanup-apply is called.
+    """
+    try:
+        proposal = cleanup_module.build_proposal(data["words"])
+    except Exception as e:
+        return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+    with open(CLEANUP_PROPOSAL_FILE, "w", encoding="utf-8") as f:
+        json.dump(proposal, f, indent=2, ensure_ascii=False)
+    return jsonify({
+        "input_word_count": proposal["input_word_count"],
+        "phase1_counts": proposal["phase1_counts"],
+        "phase2_refresh_count": proposal["phase2_refresh_count"],
+        "phase1_actions": proposal["phase1_actions"],
+        "sample_refreshes": dict(list(proposal["phase2_refresh"].items())[:8]),
+        "generated_at": proposal["generated_at"],
+    })
+
+
+@app.route("/api/words/cleanup-apply", methods=["POST"])
+def cleanup_apply():
+    """Apply the most recently proposed cleanup. Auto-backs-up before writing."""
+    global data, phrases_data
+    if not CLEANUP_PROPOSAL_FILE.exists():
+        return jsonify({"error": "No cleanup proposal found. Run cleanup-propose first."}), 400
+    with open(CLEANUP_PROPOSAL_FILE, encoding="utf-8") as f:
+        proposal = json.load(f)
+    # Auto-backup
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+    import shutil
+    shutil.copy2(DATA_FILE, DATA_FILE.with_suffix(f".json.backup-{ts}"))
+    shutil.copy2(PHRASES_FILE, PHRASES_FILE.with_suffix(f".json.backup-{ts}"))
+    try:
+        summary = cleanup_module.apply_proposal(proposal, data, phrases_data)
+    except Exception as e:
+        return jsonify({"error": f"Apply failed: {str(e)}"}), 500
+    save_data(data)
+    save_phrases(phrases_data)
+    return jsonify({"ok": True, "summary": summary, "backup_suffix": ts})
 
 
 @app.route("/api/words/<path:german>/reset-box", methods=["POST"])

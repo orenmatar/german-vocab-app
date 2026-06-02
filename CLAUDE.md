@@ -123,6 +123,33 @@ After the word reveal in sentence practice (comprehension + MC), and on the pass
 - **Star**: immediate PATCH to backend, updates `words` array and button state in place.
 - **Delete**: confirm dialog → DELETE to backend → word removed from `words` array → session continues safely (deleted words skipped going forward).
 
+## DB Cleanup (smart-LLM pass)
+A "✨ Clean up DB" button on the Words tab triggers a two-phase smart-LLM cleanup over the full word list. Shared logic lives in `cleanup.py` (importable by both `app.py` and `scripts/cleanup_words.py`).
+
+**Phase 1** (single smart LLM call): `llm/prompts/cleanup_merge.txt` — proposes per-word actions: `keep`, `merge` (with `into: <headword>`), `to_phrase`, `delete`. The prompt is conservative about delete and biased toward `keep` when uncertain.
+
+**Phase 2** (batched smart LLM calls, 25 words/batch): `llm/prompts/cleanup_refresh.txt` — for each surviving word, either `keep` or `rewrite` (returns improved `german_definition` ending with `z.B.:` example and refreshed `english_translation`). Only words flagged `keep` from Phase 1 are eligible (no point refreshing a definition for something being merged away).
+
+**Endpoints:**
+- `POST /api/words/cleanup-propose` — runs both phases, saves the full proposal to `data/cleanup_proposal.json`, returns counts + samples. Non-destructive.
+- `POST /api/words/cleanup-apply` — reads the saved proposal, auto-backs-up `words.json` + `phrases.json` (suffix `.backup-<timestamp>`), applies all actions, saves. Returns a summary.
+
+**Merge history preservation** (in `cleanup.merge_word_into`): when B is absorbed into A, A gets:
+- `times_seen` and `times_correct` summed
+- `box` and `last_seen` → max
+- `added_at` → min (oldest)
+- `starred`/`known` → OR
+- `history` arrays concatenated and sorted by timestamp
+- `variants` → existing + B's name + B's variants (deduped)
+- `context_note` → merged with " | " if both non-empty and differ
+
+**CLI alternative** (same logic, no Flask needed):
+```
+python scripts/cleanup_words.py dry-run      # writes data/cleanup_proposal.json
+python scripts/cleanup_words.py apply        # applies the proposal
+```
+The CLI proposal file is the same one the UI button writes — you can hand-edit `data/cleanup_proposal.json` between the two steps to skip/tweak specific actions.
+
 ## Edit Word Modal
 Each row in the Words list has a ✎ pencil button that opens a modal to edit `context_note` and `variants` (comma-separated text → list). PATCH `/api/words/<path:german>` accepts both fields (in addition to `starred`). Used for words added before variants existed, or to add a hint after first practicing.
 

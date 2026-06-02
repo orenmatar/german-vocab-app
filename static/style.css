@@ -1467,6 +1467,93 @@ body {
     justify-content: flex-end;
 }
 
+/* Cleanup review modal */
+
+#cleanup-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cleanup-box {
+    max-width: 640px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.cleanup-title {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    margin: 0 0 12px;
+}
+
+.cleanup-status {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin: 4px 0 16px;
+}
+
+.cleanup-counts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.cleanup-count-row {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.cleanup-count-row strong {
+    color: var(--accent);
+}
+
+.cleanup-section-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 16px 0 6px;
+}
+
+.cleanup-samples {
+    font-size: 0.85rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.cleanup-samples .cleanup-action-merge { color: var(--accent); }
+.cleanup-samples .cleanup-action-phrase { color: var(--correct); }
+.cleanup-samples .cleanup-action-delete { color: var(--wrong); }
+
+.cleanup-warning {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin: 14px 0 4px;
+    line-height: 1.5;
+}
+
+.cleanup-warning code {
+    background: var(--bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.78rem;
+}
+
 /* Edit word modal */
 
 #edit-word-modal {

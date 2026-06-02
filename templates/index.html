@@ -45,6 +45,7 @@
                 <div class="word-list-header">
                     <span id="word-count">0 words</span>
                     <div class="sort-controls">
+                        <button id="cleanup-db-btn" class="btn btn-ghost btn-small" title="Run a smart-LLM cleanup pass over your whole word list — merges duplicates, refreshes weak definitions, moves phrases, with confirmation before writing">&#x2728; Clean up DB</button>
                         <button id="star-filter-btn" class="btn btn-ghost btn-small star-filter-btn" title="Show starred words only">&#9733; Starred</button>
                         <button id="show-known-btn" class="btn btn-ghost btn-small star-filter-btn" title="Include known words in the list">&#10003; Show known</button>
                         <label>Sort by:</label>
@@ -492,6 +493,25 @@
             <div class="modal-btns">
                 <button id="modal-cancel" class="btn btn-ghost">Cancel</button>
                 <button id="modal-ok" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DB cleanup review modal -->
+    <div id="cleanup-modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-box cleanup-box">
+            <h3 class="cleanup-title">DB cleanup proposal</h3>
+            <div id="cleanup-status" class="cleanup-status">Running smart cleanup… this may take 1–3 minutes.</div>
+            <div id="cleanup-summary" style="display:none;">
+                <div id="cleanup-counts" class="cleanup-counts"></div>
+                <div class="cleanup-section-label">Sample actions</div>
+                <div id="cleanup-samples" class="cleanup-samples"></div>
+                <p class="cleanup-warning">Your <code>words.json</code> and <code>phrases.json</code> will be backed up automatically before any change. The full proposal is also saved in <code>data/cleanup_proposal.json</code> for reference.</p>
+            </div>
+            <div class="modal-btns">
+                <button id="cleanup-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="cleanup-apply" class="btn btn-primary" disabled>Apply</button>
             </div>
         </div>
     </div>
