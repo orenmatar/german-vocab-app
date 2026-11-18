@@ -1313,15 +1313,47 @@
     listenBtn.style.display = "none";
     audioLoading.style.display = "flex";
 
+    const spinner = audioLoading.querySelector(".spinner-small");
+    const label = audioLoading.querySelector("span");
+    if (spinner) spinner.style.display = "";
+    if (label) label.textContent = "Loading audio...";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    let failureMsg = null;
     try {
-      const result = await api("POST", "/api/practice/audio", { text: item.sentence });
-      currentAudioData = result.audio;
+      const res = await fetch("/api/practice/audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: item.sentence }),
+        signal: controller.signal,
+      });
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) {
+        throw new Error(`Server error (${res.status})`);
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+      currentAudioData = data.audio;
       playAudio(currentAudioData, currentPlaybackSpeed);
     } catch (e) {
       console.error("Audio failed:", e);
+      failureMsg = e.name === "AbortError"
+        ? "Audio timed out — continue without it"
+        : "Audio unavailable — continue without it";
+    } finally {
+      clearTimeout(timeoutId);
     }
 
-    audioLoading.style.display = "none";
+    if (failureMsg) {
+      if (spinner) spinner.style.display = "none";
+      if (label) label.textContent = failureMsg;
+    } else {
+      audioLoading.style.display = "none";
+    }
     showSentenceBtn.style.display = "inline-block";
 
     // Show replay bar
